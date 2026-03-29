@@ -9,7 +9,6 @@ struct WebView: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
-        // 允许 HTTP 混合内容（如果你的 hmtxit.top 是纯 HTTP）
         let request = URLRequest(url: url)
         webView.load(request)
         return webView
