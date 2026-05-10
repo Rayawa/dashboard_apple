@@ -20,15 +20,18 @@ struct DashboardView: View {
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    Color(red: 238 / 255, green: 246 / 255, blue: 254 / 255)
-                        .frame(height: 10)
-
                     Web(
                         url: selectedSite.url,
                         reloadToken: reloadToken,
                         scrollTopToken: scrollTopToken,
                         immersive: immersiveTexture
                     )
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        #if os(iOS)
+                        Color(red: 238 / 255, green: 246 / 255, blue: 254 / 255)
+                            .frame(height: 40)
+                        #endif
+                    }
                     .id(selectedSite.id)
                 }
                 .ignoresSafeArea()

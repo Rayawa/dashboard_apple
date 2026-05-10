@@ -127,7 +127,8 @@ struct UAProvider {
         let osName = UIDevice.current.systemName + UIDevice.current.systemVersion
         let deviceCategory = UIDevice.current.userInterfaceIdiom == .pad ? "tablet" : "phone"
         #elseif os(macOS)
-        let osName = ProcessInfo.processInfo.operatingSystemVersionString
+        let version = ProcessInfo.processInfo.operatingSystemVersion
+        let osName = "MacOS\(version.majorVersion).\(version.minorVersion).\(version.patchVersion)"
         let deviceCategory = "pc"
         #endif
 
