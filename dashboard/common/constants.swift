@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 #if os(iOS)
 import UIKit
 #elseif os(macOS)
@@ -130,13 +131,23 @@ struct UAProvider {
         let deviceCategory = "pc"
         #endif
 
-        var systemInfo = utsname()
-        uname(&systemInfo)
-        let modelCode = withUnsafePointer(to: &systemInfo.machine) {
-            $0.withMemoryRebound(to: CChar.self, capacity: 1) { ptr in
-                String(validatingUTF8: ptr)
-            }
-        } ?? "Unknown"
+        #if os(iOS)
+        var size: size_t = 0
+        sysctlbyname("hw.machine", nil, &size, nil, 0)
+
+        var modelBuffer = [CChar](repeating: 0, count: size)
+        sysctlbyname("hw.machine", &modelBuffer, &size, nil, 0)
+
+        let modelCode = String(cString: modelBuffer)
+        #elseif os(macOS)
+        var size: size_t = 0
+        sysctlbyname("hw.model", nil, &size, nil, 0)
+
+        var modelBuffer = [CChar](repeating: 0, count: size)
+        sysctlbyname("hw.model", &modelBuffer, &size, nil, 0)
+
+        let modelCode = String(cString: modelBuffer)
+        #endif
 
         return "\(bundleID)(\(appVersion)) | \(deviceCategory)/\(modelCode)/\(osName)"
     }
