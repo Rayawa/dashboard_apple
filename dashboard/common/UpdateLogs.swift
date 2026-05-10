@@ -1,0 +1,18 @@
+let updateLogs: [UpdateLog] = [
+    UpdateLog(version: "V2.0.3", date: "2026-5-9", type: .release, items: ["修复了特定网络环境下访问不到S站的问题", "更新友情链接", "修复已知问题，提升应用稳定性"]),
+    UpdateLog(version: "V2.0.2", date: "2026-5-1", type: .release, items: ["修复分享到看板查询页面不加载的严重bug", "调整了UA", "更新隐私协议，增加了对于用户数据访问的声明"]),
+    UpdateLog(version: "V2.0.1", date: "2026-4-25", type: .release, items: ["T站已恢复开启", "修复查询过程中存在的页面不弹出的问题", "将应用显示名称从鸿蒙应用看板更换至Hm应用看板"]),
+    UpdateLog(version: "V2.0.0", date: "2026-4-14", type: .release, items: ["大幅重构我的页面逻辑，增加众多页面", "改变使用说明逻辑，增加首次启动提示", "增加控制器与错误处理，优化主页面体验", "增加了项目网站首页链接", "为平板、PC与折叠屏适配了分栏显示", "修复了分享和投稿页面在退出之后残留在用户后台的问题", "修复了App查询返回逻辑不一致的问题"]),
+    UpdateLog(version: "V2.0.0-rc.1", date: "2026-3-30", type: .rc, items: ["上线了查询功能，现在可以在app内查询页面输入信息查询应用信息", "优化投稿页面和查询页面，增加了侧滑缓冲逻辑与加载页面", "增加了友情链接", "修改页面导航逻辑，注册路由表", "统一界面操作逻辑，统一悬浮按钮与顶部栏设计"]),
+    UpdateLog(version: "V2.0.0-beta.1", date: "2026-3-20", type: .beta, items: ["增加底部栏与新的站点，适配沉浸式材质效果", "增加新的设置项设置底部栏自动隐藏", "修复顶部栏图标深色模式适配异常的问题"]),
+    UpdateLog(version: "V1.1.2", date: "2026-3-16", type: .release, items: ["修复设置不生效的bug", "为主界面按钮添加光感", "将应用显示名称从应用看板更换至HmDashboard"]),
+    UpdateLog(version: "V1.1.1", date: "2026-3-4", type: .release, items: ["更改我的页面结构"]),
+    UpdateLog(version: "V1.1.0", date: "2026-2-5", type: .release, items: ["新增四个设置项", "App更新日志界面支持筛选功能", "优化提交和查询应用的API", "修复投稿文本框在页面关闭之后不会清空的问题"]),
+    UpdateLog(version: "V1.1.0-rc.1", date: "2025-12-13", type: .rc, items: ["重新设计所有页面顶部条", "为所有页面添加了返回逻辑", "投稿页面按钮新增波纹动效", "新增设置页面，但是没有实际效果"]),
+    UpdateLog(version: "V1.1.0-beta.4", date: "2025-12-9", type: .beta, items: ["为投稿应用功能增加AI识别能力", "完善了应用市场填写信息分享功能", "更新了教程页面的文字与图片"]),
+    UpdateLog(version: "V1.1.0-beta.3", date: "2025-12-7", type: .beta, items: ["完成按已有信息投稿到看板", "增加投稿应用功能，并增加蒙版动画", "将联系我们界面写为弹窗", "制作教程界面"]),
+    UpdateLog(version: "V1.1.0-beta.2", date: "2025-12-7", type: .beta, items: ["增加shareAbility接口", "网页页面支持一键分享链接", "在我的界面增加了用户名，App更新日志，问题与反馈与使用教程界面"]),
+    UpdateLog(version: "V1.0.0", date: "2025-12-1", type: .release, items: ["为备案链接跳转添加了弹窗二次提示", "增加备案信息"]),
+    UpdateLog(version: "V1.0.0-rc1", date: "2025-11-29", type: .rc, items: ["统一了全部页面的margin与颜色", "新增数据同步功能", "重写user界面至settings界面"]),
+    UpdateLog(version: "V1.0.0-beta.1", date: "2025-11-29", type: .beta, items: ["添加V1与V2的web界面", "添加了user界面", "添加了顶部导航条和menu"]),
+]
