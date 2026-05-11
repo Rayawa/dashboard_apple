@@ -19,20 +19,6 @@ enum SiteEndpoint: String, CaseIterable, Identifiable {
         }
     }
 
-    var shortTitle: String {
-        switch self {
-        case .s: "S"
-        case .t: "T"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .s: "数据库与服务"
-        case .t: "应用详情与落地页"
-        }
-    }
-
     var icon: String {
         switch self {
         case .s: "server.rack"
@@ -80,15 +66,6 @@ enum ShellSection: String, CaseIterable, Identifiable {
     }
 }
 
-enum DashboardSettings {
-    static let vibration = "vibrationON"
-    static let holdCheck = "holdCheckON"
-    static let buttonRight = "buttonPositionRIGHT"
-    static let tabBarAuto = "tabBarAutoON"
-    static let immersiveTexture = "immersiveTextureON"
-    static let userName = "userName"
-    static let pageURL = "pageUrl"
-}
 
 enum DashboardURLs {
     static let mainPage = URL(string: "https://dashboard.rayawa.top")!

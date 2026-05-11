@@ -3,7 +3,6 @@ import Foundation
 private struct SubmitAppBody: Encodable {
     struct CommentInfo: Encodable {
         let platform: String
-        let user: String?
         let note: String?
     }
 
@@ -68,14 +67,13 @@ enum AppAPIService {
         #endif
     }
 
-    static func submitApp(packageName: String, appId: String, userName: String, remark: String) async throws {
+    static func submitApp(packageName: String, appId: String, remark: String) async throws {
         let trimmedPackage = packageName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedPackage.isEmpty else {
             throw APIError.invalidInput("请输入包名")
         }
 
         let trimmedAppId = appId.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedUser = userName.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedRemark = remark.trimmingCharacters(in: .whitespacesAndNewlines)
 
         let payload = SubmitAppBody(
@@ -83,7 +81,6 @@ enum AppAPIService {
             pkg_name: trimmedPackage,
             comment: SubmitAppBody.CommentInfo(
                 platform: submitPlatform(),
-                user: trimmedUser.isEmpty ? nil : trimmedUser,
                 note: trimmedRemark.isEmpty ? nil : trimmedRemark
             )
         )

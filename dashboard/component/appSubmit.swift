@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct AppSubmitComponent: View {
-    @AppStorage(DashboardSettings.userName) private var userName = ""
     @State private var inputText = ""
     @State private var formData = FormData()
 
@@ -23,7 +22,7 @@ struct AppSubmitComponent: View {
             }
 
             Section {
-                SubmitButtonsComponent(formData: $formData, inputText: $inputText, userName: userName)
+                SubmitButtonsComponent(formData: $formData, inputText: $inputText)
             }
         }
         .navigationTitle("投稿/更新应用")

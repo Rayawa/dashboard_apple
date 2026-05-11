@@ -6,7 +6,7 @@ struct HTMLPageView: View {
     var body: some View {
         Group {
             if let url = Bundle.main.url(forResource: payload.resourceName, withExtension: "html", subdirectory: "resources") ?? Bundle.main.url(forResource: payload.resourceName, withExtension: "html") {
-                Web(url: url, reloadToken: UUID(), scrollTopToken: UUID(), immersive: true)
+                Web(url: url, reloadToken: UUID(), scrollTopToken: UUID())
             } else {
                 ScrollView {
                     Text("未找到本地资源：\(payload.resourceName).html")

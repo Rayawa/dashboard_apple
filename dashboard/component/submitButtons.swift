@@ -3,7 +3,6 @@ import SwiftUI
 struct SubmitButtonsComponent: View {
     @Binding var formData: FormData
     @Binding var inputText: String
-    let userName: String
 
     @State private var isSubmitting = false
     @State private var message: String?
@@ -38,8 +37,7 @@ struct SubmitButtonsComponent: View {
             try await AppAPIService.submitApp(
                 packageName: formData.packageName,
                 appId: formData.appId,
-                userName: userName,
-                remark: formData.remark
+                remark: formData.remark,
             )
             formData.clear(includeName: true)
             inputText = ""

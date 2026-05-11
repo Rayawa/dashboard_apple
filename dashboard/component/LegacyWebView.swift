@@ -5,36 +5,67 @@ struct Web: View {
     let url: URL
     let reloadToken: UUID
     let scrollTopToken: UUID
-    let immersive: Bool
 
     var body: some View {
-        PlatformWebView(url: url, reloadToken: reloadToken, scrollTopToken: scrollTopToken, immersive: immersive)
+        WebView(url: url, reloadToken: reloadToken, scrollTopToken: scrollTopToken)
     }
 }
 
+struct QueryWeb: View {
+    let payload: WebPagePayload
+    @State private var reloadToken = UUID()
+    @State private var scrollTopToken = UUID()
+
+    var body: some View {
+        ZStack(alignment: .bottomTrailing) {
+            Color.white.ignoresSafeArea()
+            if let url = URL(string: payload.urlString) {
+                Web(url: url, reloadToken: reloadToken, scrollTopToken: scrollTopToken)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            HStack(spacing: 12) {
+                action("arrow.up.to.line") { scrollTopToken = UUID() }
+                action("arrow.clockwise") { reloadToken = UUID() }
+            }
+            .padding()
+        }
+        .navigationTitle(payload.title)
+        #if !os(macOS)
+        .navigationBarTitleDisplayMode(.inline)
+        #endif
+    }
+
+    private func action(_ icon: String, callback: @escaping () -> Void) -> some View {
+        Button(action: callback) {
+            Image(systemName: icon)
+                .frame(width: 48, height: 48)
+        }
+        .buttonStyle(.plain)
+        .background(Color.white)
+        .clipShape(Circle())
+        .overlay(Circle().stroke(Color.black.opacity(0.08), lineWidth: 1))
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
+        .glassEffect()
+    }
+}
+
+
 #if os(iOS)
-struct PlatformWebView: UIViewRepresentable {
+struct WebView: UIViewRepresentable {
     let url: URL
     let reloadToken: UUID
     let scrollTopToken: UUID
-    let immersive: Bool
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeUIView(context: Context) -> WKWebView {
-        // 使用默认配置，UA 在之后手动注入
+
         let webView = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
-        
-        // 关键：直接设置 customUserAgent 避开 applicationName 字符限制
         webView.customUserAgent = UAProvider.customUserAgent
         
-        // 视觉设置
         webView.navigationDelegate = context.coordinator
         webView.scrollView.contentInsetAdjustmentBehavior = .never
-        webView.isOpaque = !immersive
-        webView.backgroundColor = immersive ? .clear : .systemBackground
-        webView.scrollView.backgroundColor = immersive ? .clear : .systemBackground
-        
+    
         context.coordinator.load(url, into: webView)
         return webView
     }
@@ -44,12 +75,12 @@ struct PlatformWebView: UIViewRepresentable {
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
-        var parent: PlatformWebView
+        var parent: WebView
         private var lastURL: URL?
         private var lastReloadToken: UUID?
         private var lastScrollTopToken: UUID?
 
-        init(_ parent: PlatformWebView) {
+        init(_ parent: WebView) {
             self.parent = parent
         }
 
@@ -77,9 +108,8 @@ struct PlatformWebView: UIViewRepresentable {
             }
         }
 
-        // 调试反馈：如果网页加载不出，这里会打印原因
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            print("❌ [WebView Error] 无法加载: \(error.localizedDescription)")
+            print("[WebView Error] 无法加载: \(error.localizedDescription)")
         }
     }
 }
@@ -87,11 +117,10 @@ struct PlatformWebView: UIViewRepresentable {
 #elseif os(macOS)
 import AppKit
 
-struct PlatformWebView: NSViewRepresentable {
+struct WebView: NSViewRepresentable {
     let url: URL
     let reloadToken: UUID
     let scrollTopToken: UUID
-    let immersive: Bool
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -102,8 +131,6 @@ struct PlatformWebView: NSViewRepresentable {
         webView.customUserAgent = UAProvider.customUserAgent
         
         webView.navigationDelegate = context.coordinator
-        // macOS 特有的背景透明处理
-        webView.setValue(!immersive, forKey: "drawsBackground")
         
         context.coordinator.load(url, into: webView)
         return webView
@@ -114,12 +141,12 @@ struct PlatformWebView: NSViewRepresentable {
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
-        var parent: PlatformWebView
+        var parent: WebView
         private var lastURL: URL?
         private var lastReloadToken: UUID?
         private var lastScrollTopToken: UUID?
 
-        init(_ parent: PlatformWebView) {
+        init(_ parent: WebView) {
             self.parent = parent
         }
 
@@ -143,13 +170,12 @@ struct PlatformWebView: NSViewRepresentable {
             }
             if lastScrollTopToken != scrollTopToken {
                 lastScrollTopToken = scrollTopToken
-                // macOS 下平滑滚动到顶部的 JS 实现
                 webView.evaluateJavaScript("window.scrollTo({ top: 0, behavior: 'smooth' });")
             }
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            print("❌ [macOS WebView Error] 无法加载: \(error.localizedDescription)")
+            print("[macOS WebView Error] 无法加载: \(error.localizedDescription)")
         }
     }
 }
