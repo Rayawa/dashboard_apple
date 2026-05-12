@@ -45,6 +45,8 @@ enum DashboardURLs {
     static let tBase = URL(string: "https://hmos.txit.top/")!
     static let eguiBase = URL(string: "https://ddns.shenjack.top:10003/egui/")!
     static let sAPIBase = sBase.appending(path: "api/v0/")
+    static let apiDocs = sBase.appending(path: "docs")
+    static let webChangeLog = tBase.appending(path: "changelog")
 
     static let hapStore = URL(string: "https://hdc.osbdf.com/")!
     static let agStatistics = URL(string: "https://appgallery.info/index.html")!
@@ -109,6 +111,31 @@ let dashboardPageBackground = Color(
     blue: 254 / 255
 )
 
+enum DashboardModalSize {
+    case warning
+    case standard
+    case tutorial
+    case web
+
+    var minWidth: CGFloat {
+        switch self {
+        case .warning: 540
+        case .standard: 700
+        case .tutorial: 880
+        case .web: 960
+        }
+    }
+
+    var minHeight: CGFloat {
+        switch self {
+        case .warning: 420
+        case .standard: 560
+        case .tutorial: 680
+        case .web: 720
+        }
+    }
+}
+
 struct DashboardModalCloseToolbarModifier: ViewModifier {
     @Environment(\.dismiss) private var dismiss
 
@@ -126,5 +153,28 @@ struct DashboardModalCloseToolbarModifier: ViewModifier {
 extension View {
     func dashboardModalCloseToolbar() -> some View {
         modifier(DashboardModalCloseToolbarModifier())
+    }
+
+    func dashboardModalFrame(_ size: DashboardModalSize) -> some View {
+        modifier(DashboardModalFrameModifier(size: size))
+    }
+}
+
+private struct DashboardModalFrameModifier: ViewModifier {
+    let size: DashboardModalSize
+
+    func body(content: Content) -> some View {
+#if os(macOS)
+        content
+            .frame(
+                minWidth: size.minWidth,
+                idealWidth: size.minWidth,
+                minHeight: size.minHeight,
+                idealHeight: size.minHeight,
+                alignment: .topLeading
+            )
+#else
+        content
+#endif
     }
 }

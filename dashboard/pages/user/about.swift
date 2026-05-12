@@ -32,14 +32,14 @@ struct AboutPageView: View {
                         .buttonStyle(.plain)
 
                         Button {
-                            onOpenModal(.aboutWeb(.init(title: "API文档说明", urlString: DashboardURLs.sBase.appending(path: "docs").absoluteString)))
+                            onOpenModal(.aboutWeb(.init(title: "API文档说明", urlString: DashboardURLs.apiDocs.absoluteString)))
                         } label: {
                             row("API文档说明", icon: "doc.text")
                         }
                         .buttonStyle(.plain)
 
                         Button {
-                            onOpenModal(.aboutWeb(.init(title: "Web更新日志", urlString: DashboardURLs.tBase.appending(path: "changelog").absoluteString)))
+                            onOpenModal(.aboutWeb(.init(title: "Web更新日志", urlString: DashboardURLs.webChangeLog.absoluteString)))
                         } label: {
                             row("Web更新日志", icon: "network")
                         }
@@ -89,6 +89,7 @@ struct AboutPageView: View {
                     #endif
             }
             .dashboardModalCloseToolbar()
+            .dashboardModalFrame(.warning)
         }
     }
 

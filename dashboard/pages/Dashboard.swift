@@ -60,6 +60,7 @@ enum DashboardSidebarItem: String, CaseIterable, Identifiable, Hashable {
 struct DashboardView: View {
     @State private var selectedItem: DashboardSidebarItem? = .dashboard
     @State private var preferredColumn: NavigationSplitViewColumn = .detail
+    @State private var columnVisibility: NavigationSplitViewVisibility = .detailOnly
     @State private var segment: DashboardSegment = .s
     @State private var activeModal: AppRoute?
     @State private var webController = WebViewController()
@@ -71,7 +72,7 @@ struct DashboardView: View {
     @State private var isSearchingApp = false
 
     var body: some View {
-        NavigationSplitView(preferredCompactColumn: $preferredColumn) {
+        NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $preferredColumn) {
             List {
                 Section {
                     sidebarRow(for: .dashboard)
@@ -95,14 +96,17 @@ struct DashboardView: View {
                     Button("清除缓存", systemImage: "trash", role: .destructive) {
                         showClearCacheAlert = true
                     }
-                    .font(.subheadline)
+                    .font(sidebarLabelFont)
                     .labelStyle(.titleAndIcon)
                     .imageScale(.small)
                 }
             }
-            .environment(\.defaultMinListRowHeight, 34)
+            .environment(\.defaultMinListRowHeight, sidebarRowHeight)
             .navigationTitle("鸿蒙应用看板")
-            .frame(minWidth: 220)
+            .frame(minWidth: sidebarMinWidth, idealWidth: sidebarMinWidth)
+#if os(macOS)
+            .navigationSplitViewColumnWidth(min: sidebarMinWidth, ideal: 280, max: 340)
+#endif
         } detail: {
             DashboardDetailContent(
                 segment: $segment,
@@ -119,12 +123,14 @@ struct DashboardView: View {
                 TutorialComponent()
             }
             .dashboardModalCloseToolbar()
+            .dashboardModalFrame(.tutorial)
         }
         .sheet(item: $activeModal) { route in
             NavigationStack {
                 modalView(for: route)
             }
             .dashboardModalCloseToolbar()
+            .dashboardModalFrame(modalSize(for: route))
         }
         .sheet(isPresented: $showWarn) {
             NavigationStack {
@@ -136,6 +142,7 @@ struct DashboardView: View {
                     #endif
             }
             .dashboardModalCloseToolbar()
+            .dashboardModalFrame(.warning)
         }
         .onAppear {
             if UserDefaults.standard.object(forKey: "has_seen_warn") == nil {
@@ -194,9 +201,9 @@ struct DashboardView: View {
         case .contact:
             openModal(.contact)
         case .apiDocs:
-            openModal(.aboutWeb(.init(title: "API文档说明", urlString: DashboardURLs.sBase.appending(path: "docs").absoluteString)))
+            openModal(.aboutWeb(.init(title: "API文档说明", urlString: DashboardURLs.apiDocs.absoluteString)))
         case .webLog:
-            openModal(.aboutWeb(.init(title: "Web更新日志", urlString: DashboardURLs.tBase.appending(path: "changelog").absoluteString)))
+            openModal(.aboutWeb(.init(title: "Web更新日志", urlString: DashboardURLs.webChangeLog.absoluteString)))
         case .appLog:
             openModal(.appLog)
         case .privacy:
@@ -215,11 +222,36 @@ struct DashboardView: View {
             handleSidebarSelection(item)
         } label: {
             Label(item.title, systemImage: item.symbolName)
-                .font(.subheadline)
+                .font(sidebarLabelFont)
                 .imageScale(.small)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .buttonStyle(.plain)
+    }
+
+    private func modalSize(for route: AppRoute) -> DashboardModalSize {
+        switch route {
+        case .friendWeb, .aboutWeb, .queryWeb, .htmlPage:
+            .web
+        case .friends, .contact, .about, .appLog:
+            .standard
+        }
+    }
+
+    private var sidebarMinWidth: CGFloat {
+        260
+    }
+
+    private var sidebarRowHeight: CGFloat {
+        46
+    }
+
+    private var sidebarLabelFont: Font {
+#if os(macOS)
+        .system(size: 23, weight: .medium)
+#else
+        .body
+#endif
     }
 
     private func clearWebCache() {
@@ -279,10 +311,27 @@ private struct DashboardDetailContent: View {
             WebLoadingProgressView(controller: controller)
                 .frame(maxHeight: .infinity, alignment: .top)
         }
+        .overlay {
+            if isSearchingApp {
+                ZStack {
+                    Color.black.opacity(0.25)
+                        .ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("正在与数据库通信…")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .padding(16)
+                    .background(.ultraThinMaterial)
+                    .cornerRadius(12)
+                }
+                .glassEffect()
+            }
+        }
         .ignoresSafeArea(edges:[.top, .bottom])
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .toolbar {
-            ToolbarItem(placement: toolbarLeadingPlacement) {
+            ToolbarItem(placement: leadingToolbarPlacement) {
                 Button {
                     controller.goBack()
                 } label: {
@@ -291,11 +340,11 @@ private struct DashboardDetailContent: View {
                 .disabled(!controller.canGoBack)
             }
 
-            ToolbarItemGroup(placement: toolbarTrailingPlacement) {
+            ToolbarItemGroup(placement: trailingToolbarPlacement) {
                 Button("Info", systemImage: "info") {
                     onInfo()
                 }
-
+                
                 ControlGroup {
                     Menu {
                         ForEach(DashboardSegment.allCases) { item in
@@ -314,37 +363,19 @@ private struct DashboardDetailContent: View {
                     } label: {
                         Image(systemName: "globe")
                     }
-
+                    
                     ShareLink(item: segment.endpoint.url)
                 }
-
-                toolbarSearchField
             }
+        }
+        .searchable(text: $searchText, placement: .toolbar, prompt: "搜索应用名称")
+        .onSubmit(of: .search) {
+            onSearchSubmit()
         }
         .toolbar(removing: .title)
     }
 
-    private var toolbarSearchField: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(.secondary)
-
-            TextField("搜索应用名称", text: $searchText)
-                .textFieldStyle(.plain)
-                .onSubmit(onSearchSubmit)
-
-            if isSearchingApp {
-                ProgressView()
-                    .controlSize(.small)
-            }
-        }
-        .frame(width: searchFieldWidth)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(.thinMaterial, in: Capsule())
-    }
-
-    private var toolbarLeadingPlacement: ToolbarItemPlacement {
+    private var leadingToolbarPlacement: ToolbarItemPlacement {
 #if os(macOS)
         .navigation
 #else
@@ -352,19 +383,11 @@ private struct DashboardDetailContent: View {
 #endif
     }
 
-    private var toolbarTrailingPlacement: ToolbarItemPlacement {
+    private var trailingToolbarPlacement: ToolbarItemPlacement {
 #if os(macOS)
-        .automatic
+        .primaryAction
 #else
         .topBarTrailing
-#endif
-    }
-
-    private var searchFieldWidth: CGFloat {
-#if os(macOS)
-        260
-#else
-        190
 #endif
     }
 }
