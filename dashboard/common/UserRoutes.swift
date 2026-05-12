@@ -1,7 +1,7 @@
 enum AppRoute: Hashable {
     case user
     case submit
-    case query
+    case query(String?)
     case friends
     case friendWeb(WebPagePayload)
     case contact

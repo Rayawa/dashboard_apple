@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AppQueryComponent: View {
+    let initialText: String?
     @State private var inputText = ""
     @State private var formData = FormData()
     let onSuccess: (WebPagePayload) -> Void
@@ -27,12 +28,21 @@ struct AppQueryComponent: View {
             }
         }
         .navigationTitle("查询应用")
-        .onChange(of: inputText) { _, newValue in
-            let extracted = NaturalLanguageExtractor.extract(from: newValue)
-            if let name = extracted.appName { formData.appName = name }
-            if let link = extracted.appLink { formData.appLink = link }
-            if let package = extracted.packageName { formData.packageName = package }
-            if let appId = extracted.appId { formData.appId = appId }
+        .onAppear {
+            guard let initialText, inputText.isEmpty else { return }
+            inputText = initialText
+            applyExtraction(from: initialText)
         }
+        .onChange(of: inputText) { _, newValue in
+            applyExtraction(from: newValue)
+        }
+    }
+
+    private func applyExtraction(from text: String) {
+        let extracted = NaturalLanguageExtractor.extract(from: text)
+        if let name = extracted.appName { formData.appName = name }
+        if let link = extracted.appLink { formData.appLink = link }
+        if let package = extracted.packageName { formData.packageName = package }
+        if let appId = extracted.appId { formData.appId = appId }
     }
 }

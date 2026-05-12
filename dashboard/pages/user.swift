@@ -29,7 +29,7 @@ struct UserPageView: View {
                                 .opacity(0.70)
 
                             navRow("查询应用", systemImage: "magnifyingglass") {
-                                onNavigate(.query)
+                                onNavigate(.query(nil))
                             }
                         }
                     }

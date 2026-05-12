@@ -2,11 +2,12 @@ import SwiftUI
 
 struct HTMLPageView: View {
     let payload: HTMLPagePayload
+    @State private var controller = WebViewController()
 
     var body: some View {
         Group {
             if let url = Bundle.main.url(forResource: payload.resourceName, withExtension: "html", subdirectory: "resources") ?? Bundle.main.url(forResource: payload.resourceName, withExtension: "html") {
-                Web(url: url, reloadToken: UUID(), scrollTopToken: UUID())
+                Web(url: url, controller: controller)
             } else {
                 ScrollView {
                     Text("未找到本地资源：\(payload.resourceName).html")

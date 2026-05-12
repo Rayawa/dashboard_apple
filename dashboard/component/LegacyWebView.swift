@@ -1,31 +1,52 @@
 import SwiftUI
 import WebKit
 
+@Observable
+final class WebViewController {
+    fileprivate weak var webView: WKWebView?
+    var canGoBack = false
+
+    func reload() {
+        webView?.reload()
+    }
+
+    func scrollToTop() {
+#if os(iOS)
+        webView?.scrollView.setContentOffset(.zero, animated: true)
+#elseif os(macOS)
+        webView?.evaluateJavaScript("window.scrollTo({ top: 0, behavior: 'smooth' });")
+#endif
+    }
+
+    func goBack() {
+        guard let webView, webView.canGoBack else { return }
+        webView.goBack()
+    }
+}
+
 struct Web: View {
     let url: URL
-    let reloadToken: UUID
-    let scrollTopToken: UUID
+    let controller: WebViewController
 
     var body: some View {
-        WebView(url: url, reloadToken: reloadToken, scrollTopToken: scrollTopToken)
+        WebView(url: url, controller: controller)
     }
 }
 
 struct QueryWeb: View {
     let payload: WebPagePayload
-    @State private var reloadToken = UUID()
-    @State private var scrollTopToken = UUID()
+    @State private var controller = WebViewController()
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             Color.white.ignoresSafeArea()
             if let url = URL(string: payload.urlString) {
-                Web(url: url, reloadToken: reloadToken, scrollTopToken: scrollTopToken)
+                Web(url: url, controller: controller)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             HStack(spacing: 12) {
-                action("arrow.up.to.line") { scrollTopToken = UUID() }
-                action("arrow.clockwise") { reloadToken = UUID() }
+                action("arrow.up.to.line") { controller.scrollToTop() }
+                action("arrow.clockwise") { controller.reload() }
             }
             .padding()
         }
@@ -53,8 +74,7 @@ struct QueryWeb: View {
 #if os(iOS)
 struct WebView: UIViewRepresentable {
     let url: URL
-    let reloadToken: UUID
-    let scrollTopToken: UUID
+    let controller: WebViewController
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -65,20 +85,18 @@ struct WebView: UIViewRepresentable {
         
         webView.navigationDelegate = context.coordinator
         webView.scrollView.contentInsetAdjustmentBehavior = .never
-    
+
         context.coordinator.load(url, into: webView)
         return webView
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        context.coordinator.update(url: url, reloadToken: reloadToken, scrollTopToken: scrollTopToken, webView: webView)
+        context.coordinator.update(url: url, controller: controller, webView: webView)
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         var parent: WebView
         private var lastURL: URL?
-        private var lastReloadToken: UUID?
-        private var lastScrollTopToken: UUID?
 
         init(_ parent: WebView) {
             self.parent = parent
@@ -94,21 +112,24 @@ struct WebView: UIViewRepresentable {
             }
         }
 
-        func update(url: URL, reloadToken: UUID, scrollTopToken: UUID, webView: WKWebView) {
+        func update(url: URL, controller: WebViewController, webView: WKWebView) {
+            controller.webView = webView
+            controller.canGoBack = webView.canGoBack
             if lastURL != url {
                 load(url, into: webView)
             }
-            if lastReloadToken != reloadToken {
-                lastReloadToken = reloadToken
-                webView.reload()
-            }
-            if lastScrollTopToken != scrollTopToken {
-                lastScrollTopToken = scrollTopToken
-                webView.scrollView.setContentOffset(.zero, animated: true)
-            }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            parent.controller.canGoBack = webView.canGoBack
+        }
+
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+            parent.controller.canGoBack = webView.canGoBack
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            parent.controller.canGoBack = webView.canGoBack
             print("[WebView Error] 无法加载: \(error.localizedDescription)")
         }
     }
@@ -119,8 +140,7 @@ import AppKit
 
 struct WebView: NSViewRepresentable {
     let url: URL
-    let reloadToken: UUID
-    let scrollTopToken: UUID
+    let controller: WebViewController
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -137,14 +157,12 @@ struct WebView: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        context.coordinator.update(url: url, reloadToken: reloadToken, scrollTopToken: scrollTopToken, webView: webView)
+        context.coordinator.update(url: url, controller: controller, webView: webView)
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         var parent: WebView
         private var lastURL: URL?
-        private var lastReloadToken: UUID?
-        private var lastScrollTopToken: UUID?
 
         init(_ parent: WebView) {
             self.parent = parent
@@ -160,21 +178,24 @@ struct WebView: NSViewRepresentable {
             }
         }
 
-        func update(url: URL, reloadToken: UUID, scrollTopToken: UUID, webView: WKWebView) {
+        func update(url: URL, controller: WebViewController, webView: WKWebView) {
+            controller.webView = webView
+            controller.canGoBack = webView.canGoBack
             if lastURL != url {
                 load(url, into: webView)
             }
-            if lastReloadToken != reloadToken {
-                lastReloadToken = reloadToken
-                webView.reload()
-            }
-            if lastScrollTopToken != scrollTopToken {
-                lastScrollTopToken = scrollTopToken
-                webView.evaluateJavaScript("window.scrollTo({ top: 0, behavior: 'smooth' });")
-            }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            parent.controller.canGoBack = webView.canGoBack
+        }
+
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+            parent.controller.canGoBack = webView.canGoBack
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            parent.controller.canGoBack = webView.canGoBack
             print("[macOS WebView Error] 无法加载: \(error.localizedDescription)")
         }
     }
