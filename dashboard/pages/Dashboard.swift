@@ -30,7 +30,7 @@ enum DashboardSidebarItem: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .dashboard: "应用看板"
+        case .dashboard: "看板主页面"
         case .projectHome: "项目网站首页"
         case .friends: "友情链接"
         case .contact: "联系我们"
@@ -44,7 +44,7 @@ enum DashboardSidebarItem: String, CaseIterable, Identifiable, Hashable {
 
     var symbolName: String {
         switch self {
-        case .dashboard: "building.columns"
+        case .dashboard: "chart.line.uptrend.xyaxis"
         case .projectHome: "house"
         case .friends: "link"
         case .contact: "person.2"
@@ -61,7 +61,7 @@ struct DashboardView: View {
     @State private var selectedItem: DashboardSidebarItem? = .dashboard
     @State private var preferredColumn: NavigationSplitViewColumn = .detail
     @State private var segment: DashboardSegment = .s
-    @State private var path: [AppRoute] = []
+    @State private var activeModal: AppRoute?
     @State private var webController = WebViewController()
     @State private var showWarn = false
     @State private var showTutorial = false
@@ -72,43 +72,59 @@ struct DashboardView: View {
 
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $preferredColumn) {
-            List(selection: $selectedItem) {
+            List {
                 Section {
-                    ForEach(DashboardSidebarItem.allCases) { item in
-                        NavigationLink(value: item) {
-                            Label(item.title, systemImage: item.symbolName)
-                        }
-                    }
+                    sidebarRow(for: .dashboard)
+                }
+
+                Section {
+                    sidebarRow(for: .projectHome)
+                    sidebarRow(for: .friends)
+                }
+
+                Section {
+                    sidebarRow(for: .contact)
+                    sidebarRow(for: .apiDocs)
+                    sidebarRow(for: .webLog)
+                    sidebarRow(for: .appLog)
+                    sidebarRow(for: .privacy)
+                    sidebarRow(for: .about)
                 }
 
                 Section {
                     Button("清除缓存", systemImage: "trash", role: .destructive) {
                         showClearCacheAlert = true
                     }
+                    .font(.subheadline)
+                    .labelStyle(.titleAndIcon)
+                    .imageScale(.small)
                 }
             }
-            .navigationTitle("Dashboard")
-            .navigationDestination(for: DashboardSidebarItem.self) { item in
-                NavigationStack(path: $path) {
-                    detailView(for: item)
-                }
-                .navigationDestination(for: AppRoute.self) { route in
-                    destination(for: route)
-                }
-            }
+            .environment(\.defaultMinListRowHeight, 34)
+            .navigationTitle("鸿蒙应用看板")
             .frame(minWidth: 220)
         } detail: {
-            NavigationStack(path: $path) {
-                detailView(for: selectedItem ?? .dashboard)
-            }
-            .navigationDestination(for: AppRoute.self) { route in
-                destination(for: route)
-            }
+            DashboardDetailContent(
+                segment: $segment,
+                controller: webController,
+                onInfo: { showTutorial = true },
+                isSearchingApp: isSearchingApp,
+                searchText: $searchText,
+                onSearchSubmit: submitSearch
+            )
         }
+        .navigationSplitViewStyle(.balanced)
         .sheet(isPresented: $showTutorial) {
             NavigationStack {
                 TutorialComponent()
             }
+            .dashboardModalCloseToolbar()
+        }
+        .sheet(item: $activeModal) { route in
+            NavigationStack {
+                modalView(for: route)
+            }
+            .dashboardModalCloseToolbar()
         }
         .sheet(isPresented: $showWarn) {
             NavigationStack {
@@ -119,6 +135,7 @@ struct DashboardView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     #endif
             }
+            .dashboardModalCloseToolbar()
         }
         .onAppear {
             if UserDefaults.standard.object(forKey: "has_seen_warn") == nil {
@@ -142,55 +159,16 @@ struct DashboardView: View {
     }
 
     @ViewBuilder
-    private func detailView(for item: DashboardSidebarItem) -> some View {
-        switch item {
-        case .dashboard:
-            DashboardDetailContent(
-                segment: $segment,
-                controller: webController,
-                onInfo: { showTutorial = true },
-                isSearchingApp: isSearchingApp,
-                searchText: $searchText,
-                onSearchSubmit: submitSearch
-            )
-        case .projectHome:
-            QueryWeb(payload: .init(title: "项目网站首页", urlString: DashboardURLs.mainPage.absoluteString))
-        case .friends:
-            FriendPageView(onNavigate: navigate)
-        case .contact:
-            ContactComponent()
-        case .apiDocs:
-            AboutWebPageView(payload: .init(title: "API文档说明", urlString: DashboardURLs.sBase.appending(path: "docs").absoluteString))
-        case .webLog:
-            AboutWebPageView(payload: .init(title: "Web更新日志", urlString: DashboardURLs.tBase.appending(path: "changelog").absoluteString))
-        case .appLog:
-            AppLogPageView()
-        case .privacy:
-            HTMLPageView(payload: .init(title: "隐私政策", resourceName: "privacy"))
-        case .about:
-            AboutPageView(onNavigate: navigate)
-        }
-    }
-
-    @ViewBuilder
-    private func destination(for route: AppRoute) -> some View {
+    private func modalView(for route: AppRoute) -> some View {
         switch route {
-        case .user:
-            UserPageView(onNavigate: navigate)
-        case .submit:
-            AppSubmitComponent()
-        case .query(let initialText):
-            AppQueryComponent(initialText: initialText) { payload in
-                path.append(.queryWeb(payload))
-            }
         case .friends:
-            FriendPageView(onNavigate: navigate)
+            FriendPageView(onOpenModal: openModal)
         case .friendWeb(let payload):
             QueryWeb(payload: payload)
         case .contact:
             ContactComponent()
         case .about:
-            AboutPageView(onNavigate: navigate)
+            AboutPageView(onOpenModal: openModal)
         case .aboutWeb(let payload):
             AboutWebPageView(payload: payload)
         case .queryWeb(let payload):
@@ -202,8 +180,46 @@ struct DashboardView: View {
         }
     }
 
-    private func navigate(_ route: AppRoute) {
-        path.append(route)
+    private func handleSidebarSelection(_ item: DashboardSidebarItem) {
+        selectedItem = .dashboard
+        preferredColumn = .detail
+
+        switch item {
+        case .dashboard:
+            break
+        case .projectHome:
+            openModal(.queryWeb(.init(title: "项目网站首页", urlString: DashboardURLs.mainPage.absoluteString)))
+        case .friends:
+            openModal(.friends)
+        case .contact:
+            openModal(.contact)
+        case .apiDocs:
+            openModal(.aboutWeb(.init(title: "API文档说明", urlString: DashboardURLs.sBase.appending(path: "docs").absoluteString)))
+        case .webLog:
+            openModal(.aboutWeb(.init(title: "Web更新日志", urlString: DashboardURLs.tBase.appending(path: "changelog").absoluteString)))
+        case .appLog:
+            openModal(.appLog)
+        case .privacy:
+            openModal(.htmlPage(.init(title: "隐私政策", resourceName: "privacy")))
+        case .about:
+            openModal(.about)
+        }
+    }
+
+    private func openModal(_ route: AppRoute) {
+        activeModal = route
+    }
+
+    private func sidebarRow(for item: DashboardSidebarItem) -> some View {
+        Button {
+            handleSidebarSelection(item)
+        } label: {
+            Label(item.title, systemImage: item.symbolName)
+                .font(.subheadline)
+                .imageScale(.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
     }
 
     private func clearWebCache() {
@@ -233,7 +249,7 @@ struct DashboardView: View {
                 throw APIError.notFound("库中未找到该应用")
             }
             preferredColumn = .detail
-            path.append(.queryWeb(.init(title: name, urlString: AppAPIService.resultURL(for: appID).absoluteString)))
+            openModal(.queryWeb(.init(title: name, urlString: AppAPIService.resultURL(for: appID).absoluteString)))
             searchText = ""
         } catch {
             searchErrorMessage = error.localizedDescription
@@ -250,19 +266,21 @@ private struct DashboardDetailContent: View {
     let onSearchSubmit: () -> Void
 
     var body: some View {
-        GeometryReader { proxy in
-                    Web(
-                        url: segment.endpoint.url,
-                        controller: controller
-                    )
-                    .ignoresSafeArea()
-                    .id(segment.id)
-                    .frame(minWidth: 0, maxWidth: .infinity)
-                    .frame(height: max(proxy.size.height, 640))
-                    .background(dashboardBackgroundColor)
-                    .flexibleHeaderContent(minHeight: max(proxy.size.height, 640))
-
+        ZStack {
+            dashboardPageBackground
+            Web(
+                url: segment.endpoint.url,
+                controller: controller
+            )
+            .ignoresSafeArea(edges:[.top, .bottom])
+            .id(segment.id)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(dashboardPageBackground)
+            WebLoadingProgressView(controller: controller)
+                .frame(maxHeight: .infinity, alignment: .top)
         }
+        .ignoresSafeArea(edges:[.top, .bottom])
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .toolbar {
             ToolbarItem(placement: toolbarLeadingPlacement) {
                 Button {
@@ -273,50 +291,37 @@ private struct DashboardDetailContent: View {
                 .disabled(!controller.canGoBack)
             }
 
-            ToolbarItem(placement: .principal) {
-                segmentPicker
-            }
-
-            ToolbarSpacer(.flexible)
-
-            ToolbarItem {
-                ShareLink(item: segment.endpoint.url)
-            }
-
-            ToolbarSpacer(.fixed)
-
-            ToolbarItem {
+            ToolbarItemGroup(placement: toolbarTrailingPlacement) {
                 Button("Info", systemImage: "info") {
                     onInfo()
                 }
-            }
 
-            ToolbarSpacer(.fixed)
+                ControlGroup {
+                    Menu {
+                        ForEach(DashboardSegment.allCases) { item in
+                            Button {
+                                segment = item
+                            } label: {
+                                HStack {
+                                    Text(item.rawValue)
+                                    if item == segment {
+                                        Spacer()
+                                        Image(systemName: "checkmark")
+                                    }
+                                }
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "globe")
+                    }
 
-            ToolbarItem {
+                    ShareLink(item: segment.endpoint.url)
+                }
+
                 toolbarSearchField
             }
         }
         .toolbar(removing: .title)
-        .ignoresSafeArea()
-    }
-
-    private var dashboardBackgroundColor: Color {
-#if os(iOS)
-        Color(uiColor: .systemBackground)
-#elseif os(macOS)
-        Color(nsColor: .windowBackgroundColor)
-#endif
-    }
-
-    private var segmentPicker: some View {
-        Picker("站点", selection: $segment) {
-            ForEach(DashboardSegment.allCases) { item in
-                Text(item.rawValue).tag(item)
-            }
-        }
-        .pickerStyle(.segmented)
-        .frame(width: 180)
     }
 
     private var toolbarSearchField: some View {
@@ -344,6 +349,14 @@ private struct DashboardDetailContent: View {
         .navigation
 #else
         .topBarLeading
+#endif
+    }
+
+    private var toolbarTrailingPlacement: ToolbarItemPlacement {
+#if os(macOS)
+        .automatic
+#else
+        .topBarTrailing
 #endif
     }
 

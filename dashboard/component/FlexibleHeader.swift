@@ -1,34 +1,40 @@
 import SwiftUI
 
-@Observable
-private final class FlexibleHeaderGeometry {
-    var offset: CGFloat = 0
+private struct FlexibleHeaderOffsetKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
+private extension EnvironmentValues {
+    var flexibleHeaderOffset: CGFloat {
+        get { self[FlexibleHeaderOffsetKey.self] }
+        set { self[FlexibleHeaderOffsetKey.self] = newValue }
+    }
 }
 
 private struct FlexibleHeaderContentModifier: ViewModifier {
-    @Environment(FlexibleHeaderGeometry.self) private var geometry
+    @Environment(\.flexibleHeaderOffset) private var offset
     let minHeight: CGFloat
 
     func body(content: Content) -> some View {
-        let height = max(minHeight - geometry.offset, minHeight)
+        let height = max(minHeight - offset, minHeight)
         content
             .frame(height: height)
-            .padding(.bottom, geometry.offset)
-            .offset(y: geometry.offset)
+            .padding(.bottom, offset)
+            .offset(y: offset)
     }
 }
 
 private struct FlexibleHeaderScrollViewModifier: ViewModifier {
-    @State private var geometry = FlexibleHeaderGeometry()
+    @State private var offset: CGFloat = 0
 
     func body(content: Content) -> some View {
         content
             .onScrollGeometryChange(for: CGFloat.self) { scrollGeometry in
                 min(scrollGeometry.contentOffset.y + scrollGeometry.contentInsets.top, 0)
             } action: { _, offset in
-                geometry.offset = offset
+                self.offset = offset
             }
-            .environment(geometry)
+            .environment(\.flexibleHeaderOffset, offset)
     }
 }
 

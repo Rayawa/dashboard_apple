@@ -88,15 +88,7 @@ struct TutorialComponent: View {
         .tabViewStyle(.page(indexDisplayMode: .always))
         #endif
         .background(
-            LinearGradient(
-                colors: [
-                    Color(red: 238 / 255, green: 246 / 255, blue: 254 / 255),
-                    Color.white
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
+            dashboardPageBackground.ignoresSafeArea()
         )
         .navigationTitle("教程")
         #if !os(macOS)

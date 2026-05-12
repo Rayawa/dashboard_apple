@@ -1,24 +1,28 @@
 import SwiftUI
 
 struct AboutPageView: View {
-    let onNavigate: (AppRoute) -> Void
+    let onOpenModal: (AppRoute) -> Void
     @State private var showWarn = false
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                VStack(spacing: 10) {
-                    Image(systemName: "square.grid.2x2.fill")
-                        .font(.system(size: 72))
-                    Text("Hm应用看板")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                    Text("HmDashboard")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.top, 30)
-
+        ZStack {
+            dashboardPageBackground.ignoresSafeArea()
+            ScrollView {
                 VStack(spacing: 12) {
+                    VStack(spacing: 10) {
+                        Image(systemName: "square.grid.2x2.fill")
+                            .font(.system(size: 72))
+                        Text("Hm应用看板")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                        Text("HmDashboard")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.top, 30)
+                }
+                .padding(.horizontal, 16)
+
+                VStack(spacing: 18) {
                     VStack(spacing: 12) {
                         Button {
                             showWarn = true
@@ -28,50 +32,51 @@ struct AboutPageView: View {
                         .buttonStyle(.plain)
 
                         Button {
-                            onNavigate(.aboutWeb(.init(title: "API文档说明", urlString: DashboardURLs.sBase.appending(path: "docs").absoluteString)))
+                            onOpenModal(.aboutWeb(.init(title: "API文档说明", urlString: DashboardURLs.sBase.appending(path: "docs").absoluteString)))
                         } label: {
                             row("API文档说明", icon: "doc.text")
                         }
                         .buttonStyle(.plain)
 
                         Button {
-                            onNavigate(.aboutWeb(.init(title: "Web更新日志", urlString: DashboardURLs.tBase.appending(path: "changelog").absoluteString)))
+                            onOpenModal(.aboutWeb(.init(title: "Web更新日志", urlString: DashboardURLs.tBase.appending(path: "changelog").absoluteString)))
                         } label: {
                             row("Web更新日志", icon: "network")
                         }
                         .buttonStyle(.plain)
 
                         Button {
-                            onNavigate(.appLog)
+                            onOpenModal(.appLog)
                         } label: {
                             row("App更新日志", icon: "clock.arrow.circlepath")
                         }
                         .buttonStyle(.plain)
 
                         Button {
-                            onNavigate(.htmlPage(.init(title: "隐私政策", resourceName: "privacy")))
+                            onOpenModal(.htmlPage(.init(title: "隐私政策", resourceName: "privacy")))
                         } label: {
                             row("隐私政策", icon: "hand.raised")
                         }
                         .buttonStyle(.plain)
                     }
-                }
-                .padding(16)
-                .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .stroke(Color.black.opacity(0.08), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+                    .padding(16)
+                    .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(Color.black.opacity(0.08), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
 
-                VStack(spacing: 4) {
-                    Text("版本 \(DashboardMeta.appVersion)").font(.footnote).foregroundStyle(.secondary)
-                    Text("Designed & Developed by Ray Chen (Rayawa)").font(.footnote).foregroundStyle(.secondary)
-                    Text("Copyright © 2026. All rights reserved.").font(.footnote).foregroundStyle(.secondary)
-                    Link("京ICP备2025153453号", destination: DashboardURLs.miit).font(.footnote)
+                    VStack(spacing: 4) {
+                        Text("版本 \(DashboardMeta.appVersion)").font(.footnote).foregroundStyle(.secondary)
+                        Text("Designed & Developed by Ray Chen (Rayawa)").font(.footnote).foregroundStyle(.secondary)
+                        Text("Copyright © 2026. All rights reserved.").font(.footnote).foregroundStyle(.secondary)
+                        Link("京ICP备2025153453号", destination: DashboardURLs.miit).font(.footnote)
+                    }
                 }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
             }
-            .padding(.vertical, 8)
         }
         .navigationTitle("关于应用")
         .sheet(isPresented: $showWarn) {
@@ -83,6 +88,7 @@ struct AboutPageView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     #endif
             }
+            .dashboardModalCloseToolbar()
         }
     }
 

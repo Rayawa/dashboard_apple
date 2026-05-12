@@ -1,5 +1,6 @@
 import Foundation
 import Darwin
+import SwiftUI
 #if os(iOS)
 import UIKit
 #elseif os(macOS)
@@ -37,35 +38,6 @@ enum SiteEndpoint: String, CaseIterable, Identifiable {
         SiteEndpoint.allCases.first { $0.url.absoluteString == value } ?? .s
     }
 }
-
-enum ShellSection: String, CaseIterable, Identifiable {
-    case browser
-    case user
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .browser: "浏览"
-        case .user: "我的"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .browser: "站点切换与网页操作"
-        case .user: "设置、投稿、查询与更多"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .browser: "globe.asia.australia"
-        case .user: "person.crop.circle"
-        }
-    }
-}
-
 
 enum DashboardURLs {
     static let mainPage = URL(string: "https://dashboard.rayawa.top")!
@@ -128,5 +100,31 @@ struct UAProvider {
         #endif
 
         return "\(bundleID)(\(appVersion)) | \(deviceCategory)/\(modelCode)/\(osName)"
+    }
+}
+
+let dashboardPageBackground = Color(
+    red: 238 / 255,
+    green: 246 / 255,
+    blue: 254 / 255
+)
+
+struct DashboardModalCloseToolbarModifier: ViewModifier {
+    @Environment(\.dismiss) private var dismiss
+
+    func body(content: Content) -> some View {
+        content.toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("关闭") {
+                    dismiss()
+                }
+            }
+        }
+    }
+}
+
+extension View {
+    func dashboardModalCloseToolbar() -> some View {
+        modifier(DashboardModalCloseToolbarModifier())
     }
 }
