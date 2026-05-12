@@ -68,6 +68,7 @@ struct DashboardView: View {
     @State private var showClearCacheAlert = false
     @State private var searchText = ""
     @State private var searchErrorMessage: String?
+    @State private var isSearchingApp = false
 
     var body: some View {
         NavigationSplitView(preferredCompactColumn: $preferredColumn) {
@@ -102,14 +103,6 @@ struct DashboardView: View {
             }
             .navigationDestination(for: AppRoute.self) { route in
                 destination(for: route)
-            }
-        }
-        .searchable(text: $searchText, prompt: "搜索应用名称")
-        .onSubmit(of: .search) {
-            let value = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !value.isEmpty else { return }
-            Task {
-                await searchAppAndOpenResult(named: value)
             }
         }
         .sheet(isPresented: $showTutorial) {
@@ -155,7 +148,10 @@ struct DashboardView: View {
             DashboardDetailContent(
                 segment: $segment,
                 controller: webController,
-                onInfo: { showTutorial = true }
+                onInfo: { showTutorial = true },
+                isSearchingApp: isSearchingApp,
+                searchText: $searchText,
+                onSearchSubmit: submitSearch
             )
         case .projectHome:
             QueryWeb(payload: .init(title: "项目网站首页", urlString: DashboardURLs.mainPage.absoluteString))
@@ -218,13 +214,25 @@ struct DashboardView: View {
         }
     }
 
+    private func submitSearch() {
+        let value = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !value.isEmpty, !isSearchingApp else { return }
+        preferredColumn = .detail
+        Task {
+            await searchAppAndOpenResult(named: value)
+        }
+    }
+
     @MainActor
     private func searchAppAndOpenResult(named name: String) async {
+        isSearchingApp = true
+        defer { isSearchingApp = false }
         do {
             let appID = try await AppAPIService.appId(byName: name)
             guard try await AppAPIService.verify(appId: appID) else {
                 throw APIError.notFound("库中未找到该应用")
             }
+            preferredColumn = .detail
             path.append(.queryWeb(.init(title: name, urlString: AppAPIService.resultURL(for: appID).absoluteString)))
             searchText = ""
         } catch {
@@ -237,28 +245,23 @@ private struct DashboardDetailContent: View {
     @Binding var segment: DashboardSegment
     let controller: WebViewController
     let onInfo: () -> Void
+    let isSearchingApp: Bool
+    @Binding var searchText: String
+    let onSearchSubmit: () -> Void
 
     var body: some View {
         GeometryReader { proxy in
-            ScrollView(.vertical) {
-                VStack(spacing: 0) {
-                    Color.clear
-                        .frame(height: 40)
-
                     Web(
                         url: segment.endpoint.url,
                         controller: controller
                     )
+                    .ignoresSafeArea()
                     .id(segment.id)
                     .frame(minWidth: 0, maxWidth: .infinity)
                     .frame(height: max(proxy.size.height, 640))
                     .background(dashboardBackgroundColor)
                     .flexibleHeaderContent(minHeight: max(proxy.size.height, 640))
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .flexibleHeaderScrollView()
-            .ignoresSafeArea()
+
         }
         .toolbar {
             ToolbarItem(placement: toolbarLeadingPlacement) {
@@ -271,16 +274,10 @@ private struct DashboardDetailContent: View {
             }
 
             ToolbarItem(placement: .principal) {
-                Picker("站点", selection: $segment) {
-                    ForEach(DashboardSegment.allCases) { item in
-                        Text(item.rawValue).tag(item)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 180)
+                segmentPicker
             }
 
-            ToolbarSpacer(.fixed)
+            ToolbarSpacer(.flexible)
 
             ToolbarItem {
                 ShareLink(item: segment.endpoint.url)
@@ -293,9 +290,15 @@ private struct DashboardDetailContent: View {
                     onInfo()
                 }
             }
+
+            ToolbarSpacer(.fixed)
+
+            ToolbarItem {
+                toolbarSearchField
+            }
         }
         .toolbar(removing: .title)
-        .ignoresSafeArea(edges: .top)
+        .ignoresSafeArea()
     }
 
     private var dashboardBackgroundColor: Color {
@@ -306,11 +309,49 @@ private struct DashboardDetailContent: View {
 #endif
     }
 
+    private var segmentPicker: some View {
+        Picker("站点", selection: $segment) {
+            ForEach(DashboardSegment.allCases) { item in
+                Text(item.rawValue).tag(item)
+            }
+        }
+        .pickerStyle(.segmented)
+        .frame(width: 180)
+    }
+
+    private var toolbarSearchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+
+            TextField("搜索应用名称", text: $searchText)
+                .textFieldStyle(.plain)
+                .onSubmit(onSearchSubmit)
+
+            if isSearchingApp {
+                ProgressView()
+                    .controlSize(.small)
+            }
+        }
+        .frame(width: searchFieldWidth)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.thinMaterial, in: Capsule())
+    }
+
     private var toolbarLeadingPlacement: ToolbarItemPlacement {
 #if os(macOS)
         .navigation
 #else
         .topBarLeading
+#endif
+    }
+
+    private var searchFieldWidth: CGFloat {
+#if os(macOS)
+        260
+#else
+        190
 #endif
     }
 }
