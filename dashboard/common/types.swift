@@ -1,19 +1,5 @@
 import Foundation
 
-struct FriendSite: Identifiable, Hashable {
-    let id: String
-    let title: String
-    let url: URL
-    let icon: String
-}
-
-struct FriendApp: Identifiable, Hashable {
-    let id: String
-    let title: String
-    let appId: String
-    let icon: String
-}
-
 struct UpdateLog: Identifiable, Hashable {
     let version: String
     let date: String
@@ -39,7 +25,7 @@ enum ReleaseType: String, CaseIterable, Hashable {
 
 struct WebPagePayload: Hashable {
     let title: String
-    let urlString: String
+    let url: URL
 }
 
 struct HTMLPagePayload: Hashable {

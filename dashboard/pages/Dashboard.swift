@@ -1,397 +1,250 @@
 import SwiftUI
-import WebKit
 
-enum DashboardSegment: String, CaseIterable, Identifiable {
-    case t = "T站"
-    case s = "S站"
-
-    var id: String { rawValue }
-
-    var endpoint: SiteEndpoint {
-        switch self {
-        case .t: .t
-        case .s: .s
-        }
-    }
-}
-
-enum DashboardSidebarItem: String, CaseIterable, Identifiable, Hashable {
-    case dashboard
-    case projectHome
-    case friends
-    case contact
-    case apiDocs
-    case webLog
-    case appLog
-    case privacy
-    case about
+enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
+    case home
+    case apps
+    case search
+    case webBackup
+    case profile
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .dashboard: "看板主页面"
-        case .projectHome: "项目网站首页"
-        case .friends: "友情链接"
-        case .contact: "联系我们"
-        case .apiDocs: "API文档说明"
-        case .webLog: "Web更新日志"
-        case .appLog: "App更新日志"
-        case .privacy: "隐私政策"
-        case .about: "应用信息"
+        case .home: "首页"
+        case .apps: "应用"
+        case .search: "搜索"
+        case .webBackup: "备用网页"
+        case .profile: "我的"
         }
     }
 
-    var symbolName: String {
+    var symbol: String {
         switch self {
-        case .dashboard: "chart.line.uptrend.xyaxis"
-        case .projectHome: "house"
-        case .friends: "link"
-        case .contact: "person.2"
-        case .apiDocs: "doc.text"
-        case .webLog: "network"
-        case .appLog: "clock.arrow.circlepath"
-        case .privacy: "hand.raised"
-        case .about: "info.circle"
+        case .home: "house"
+        case .apps: "square.grid.2x2"
+        case .search: "magnifyingglass"
+        case .webBackup: "globe"
+        case .profile: "person.crop.circle"
         }
     }
 }
 
 struct DashboardView: View {
-    @State private var selectedItem: DashboardSidebarItem? = .dashboard
-    @State private var preferredColumn: NavigationSplitViewColumn = .detail
-    @State private var columnVisibility: NavigationSplitViewVisibility = .detailOnly
-    @State private var segment: DashboardSegment = .s
-    @State private var activeModal: AppRoute?
-    @State private var webController = WebViewController()
-    @State private var showWarn = false
-    @State private var showTutorial = false
-    @State private var showClearCacheAlert = false
-    @State private var searchText = ""
-    @State private var searchErrorMessage: String?
-    @State private var isSearchingApp = false
+    @State private var selection: DashboardSection = .home
+    @State private var path: [AppRoute] = []
+    @State private var columnVisibility: NavigationSplitViewVisibility = .automatic
+    @State private var compactColumn: NavigationSplitViewColumn = .detail
+    @State private var visibility = DashboardVisibilityConfig.restricted
+    @AppStorage("accepted_important_notice_v3") private var acceptedNotice = false
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $preferredColumn) {
+        NavigationSplitView(columnVisibility: $columnVisibility, preferredCompactColumn: $compactColumn) {
             List {
-                Section {
-                    sidebarRow(for: .dashboard)
+                Section("原生看板") {
+                    sidebarButton(.home)
+                    sidebarButton(.apps)
+                    sidebarButton(.search)
                 }
-
-                Section {
-                    sidebarRow(for: .projectHome)
-                    sidebarRow(for: .friends)
-                }
-
-                Section {
-                    sidebarRow(for: .contact)
-                    sidebarRow(for: .apiDocs)
-                    sidebarRow(for: .webLog)
-                    sidebarRow(for: .appLog)
-                    sidebarRow(for: .privacy)
-                    sidebarRow(for: .about)
-                }
-
-                Section {
-                    Button("清除缓存", systemImage: "trash", role: .destructive) {
-                        showClearCacheAlert = true
-                    }
-                    .font(sidebarLabelFont)
-                    .labelStyle(.titleAndIcon)
-                    .imageScale(.small)
+                Section("其他") {
+                    sidebarButton(.webBackup)
+                    sidebarButton(.profile)
                 }
             }
-            .environment(\.defaultMinListRowHeight, sidebarRowHeight)
-            .navigationTitle("鸿蒙应用看板")
-            .frame(minWidth: sidebarMinWidth, idealWidth: sidebarMinWidth)
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: sidebarMinWidth, ideal: 280, max: 340)
-#endif
+            .navigationTitle("Dashboard")
+            .navigationSplitViewColumnWidth(min: 210, ideal: 250, max: 310)
         } detail: {
-            DashboardDetailContent(
-                segment: $segment,
-                controller: webController,
-                onInfo: { showTutorial = true },
-                isSearchingApp: isSearchingApp,
-                searchText: $searchText,
-                onSearchSubmit: submitSearch
-            )
+            NavigationStack(path: $path) {
+                Group {
+                    if acceptedNotice {
+                        selectedContent
+                    } else {
+                        dashboardPageBackground.ignoresSafeArea()
+                            .accessibilityHidden(true)
+                    }
+                }
+                    .navigationDestination(for: AppRoute.self, destination: destination)
+            }
+            .id(selection)
         }
         .navigationSplitViewStyle(.balanced)
-        .sheet(isPresented: $showTutorial) {
-            NavigationStack {
-                TutorialComponent()
-            }
-            .dashboardModalCloseToolbar()
-            .dashboardModalFrame(.tutorial)
+        .environment(\.dashboardVisibility, visibility)
+        .task(id: acceptedNotice) {
+            guard acceptedNotice else { return }
+            visibility = await AppAPIService.dashboardConfig()
         }
-        .sheet(item: $activeModal) { route in
-            NavigationStack {
-                modalView(for: route)
-            }
-            .dashboardModalCloseToolbar()
-            .dashboardModalFrame(modalSize(for: route))
+        .onChange(of: selection) {
+            path.removeAll()
+            compactColumn = .detail
         }
-        .sheet(isPresented: $showWarn) {
-            NavigationStack {
-                WarnComponent()
-                    .padding()
-                    .navigationTitle("重要提示")
-                    #if !os(macOS)
-                    .navigationBarTitleDisplayMode(.inline)
-                    #endif
-            }
-            .dashboardModalCloseToolbar()
-            .dashboardModalFrame(.warning)
+        .onOpenURL(perform: openDeepLink)
+        .importantNoticeGate(isPresented: Binding(
+            get: { !acceptedNotice },
+            set: { _ in }
+        )) {
+            acceptedNotice = true
         }
-        .onAppear {
-            if UserDefaults.standard.object(forKey: "has_seen_warn") == nil {
-                showWarn = true
-                UserDefaults.standard.set(true, forKey: "has_seen_warn")
-            }
+    }
+
+    private func openDeepLink(_ url: URL) {
+        guard let target = DashboardDeepLink.appTarget(from: url) else { return }
+        selection = .search
+        compactColumn = .detail
+        path = [.appDetail(target)]
+    }
+
+    private func sidebarButton(_ section: DashboardSection) -> some View {
+        Button {
+            DashboardFeedback.selection()
+            selection = section
+            compactColumn = .detail
+        } label: {
+            Label(section.title, systemImage: section.symbol)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
         }
-        .alert("清除缓存", isPresented: $showClearCacheAlert) {
-            Button("取消", role: .cancel) {}
-            Button("继续", role: .destructive) {
-                clearWebCache()
-            }
-        } message: {
-            Text("这会删除当前 WebView 缓存和 Cookie。")
-        }
-        .alert("搜索失败", isPresented: Binding(get: { searchErrorMessage != nil }, set: { if !$0 { searchErrorMessage = nil } })) {
-            Button("确定", role: .cancel) {}
-        } message: {
-            Text(searchErrorMessage ?? "")
+        .buttonStyle(.plain)
+        .listRowBackground(selection == section ? Color.accentColor.opacity(0.12) : Color.clear)
+        .accessibilityAddTraits(selection == section ? .isSelected : [])
+    }
+
+    @ViewBuilder
+    private var selectedContent: some View {
+        switch selection {
+        case .home: HomeDashboardView()
+        case .apps: MarketAppsView()
+        case .search: NativeSearchView()
+        case .webBackup: WebBackupView()
+        case .profile: NativeProfileView()
         }
     }
 
     @ViewBuilder
-    private func modalView(for route: AppRoute) -> some View {
+    private func destination(_ route: AppRoute) -> some View {
         switch route {
+        case .appDetail(let target):
+            NativeAppDetailView(target: target)
+        case .search:
+            NativeSearchView()
+        case .submitApp:
+            SubmitAppView()
+        case .tutorial:
+            TutorialComponent()
+        case .developer:
+            NativeDeveloperView()
         case .friends:
-            FriendPageView(onOpenModal: openModal)
-        case .friendWeb(let payload):
+            FriendPageView { path.append($0) }
+        case .web(let payload):
             QueryWeb(payload: payload)
         case .contact:
             ContactComponent()
-        case .about:
-            AboutPageView(onOpenModal: openModal)
-        case .aboutWeb(let payload):
-            AboutWebPageView(payload: payload)
-        case .queryWeb(let payload):
-            QueryWeb(payload: payload)
         case .appLog:
             AppLogPageView()
         case .htmlPage(let payload):
             HTMLPageView(payload: payload)
         }
     }
+}
 
-    private func handleSidebarSelection(_ item: DashboardSidebarItem) {
-        selectedItem = .dashboard
-        preferredColumn = .detail
-
-        switch item {
-        case .dashboard:
-            break
-        case .projectHome:
-            openModal(.queryWeb(.init(title: "项目网站首页", urlString: DashboardURLs.mainPage.absoluteString)))
-        case .friends:
-            openModal(.friends)
-        case .contact:
-            openModal(.contact)
-        case .apiDocs:
-            openModal(.aboutWeb(.init(title: "API文档说明", urlString: DashboardURLs.apiDocs.absoluteString)))
-        case .webLog:
-            openModal(.aboutWeb(.init(title: "Web更新日志", urlString: DashboardURLs.webChangeLog.absoluteString)))
-        case .appLog:
-            openModal(.appLog)
-        case .privacy:
-            openModal(.htmlPage(.init(title: "隐私政策", resourceName: "privacy")))
-        case .about:
-            openModal(.about)
-        }
-    }
-
-    private func openModal(_ route: AppRoute) {
-        activeModal = route
-    }
-
-    private func sidebarRow(for item: DashboardSidebarItem) -> some View {
-        Button {
-            handleSidebarSelection(item)
-        } label: {
-            Label(item.title, systemImage: item.symbolName)
-                .font(sidebarLabelFont)
-                .imageScale(.small)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func modalSize(for route: AppRoute) -> DashboardModalSize {
-        switch route {
-        case .friendWeb, .aboutWeb, .queryWeb, .htmlPage:
-            .web
-        case .friends, .contact, .about, .appLog:
-            .standard
-        }
-    }
-
-    private var sidebarMinWidth: CGFloat {
-        260
-    }
-
-    private var sidebarRowHeight: CGFloat {
-        46
-    }
-
-    private var sidebarLabelFont: Font {
+private extension View {
+    @ViewBuilder
+    func importantNoticeGate(isPresented: Binding<Bool>, accept: @escaping () -> Void) -> some View {
 #if os(macOS)
-        .system(size: 23, weight: .medium)
+        sheet(isPresented: isPresented) {
+            ImportantNoticeGate(accept: accept)
+                .frame(minWidth: 620, minHeight: 640)
+        }
 #else
-        .body
+        fullScreenCover(isPresented: isPresented) {
+            ImportantNoticeGate(accept: accept)
+        }
 #endif
-    }
-
-    private func clearWebCache() {
-        let store = WKWebsiteDataStore.default()
-        let types = WKWebsiteDataStore.allWebsiteDataTypes()
-        store.fetchDataRecords(ofTypes: types) { records in
-            store.removeData(ofTypes: types, for: records) {}
-        }
-    }
-
-    private func submitSearch() {
-        let value = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !value.isEmpty, !isSearchingApp else { return }
-        preferredColumn = .detail
-        Task {
-            await searchAppAndOpenResult(named: value)
-        }
-    }
-
-    @MainActor
-    private func searchAppAndOpenResult(named name: String) async {
-        isSearchingApp = true
-        defer { isSearchingApp = false }
-        do {
-            let appID = try await AppAPIService.appId(byName: name)
-            guard try await AppAPIService.verify(appId: appID) else {
-                throw APIError.notFound("库中未找到该应用")
-            }
-            preferredColumn = .detail
-            openModal(.queryWeb(.init(title: name, urlString: AppAPIService.resultURL(for: appID).absoluteString)))
-            searchText = ""
-        } catch {
-            searchErrorMessage = error.localizedDescription
-        }
     }
 }
 
-private struct DashboardDetailContent: View {
-    @Binding var segment: DashboardSegment
-    let controller: WebViewController
-    let onInfo: () -> Void
-    let isSearchingApp: Bool
-    @Binding var searchText: String
-    let onSearchSubmit: () -> Void
+private struct WebBackupView: View {
+    @Environment(\.dashboardVisibility) private var visibility
+    @State private var endpoint: SiteEndpoint = .s
+    @State private var controller = WebViewController()
 
     var body: some View {
-        ZStack {
-            dashboardPageBackground
-            Web(
-                url: segment.endpoint.url,
-                controller: controller
-            )
-            .ignoresSafeArea(edges:[.top, .bottom])
-            .id(segment.id)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(dashboardPageBackground)
+        ZStack(alignment: .top) {
+            dashboardPageBackground.ignoresSafeArea()
+            Web(url: endpoint.url, controller: controller)
+                .id(endpoint.id)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             WebLoadingProgressView(controller: controller)
-                .frame(maxHeight: .infinity, alignment: .top)
         }
-        .overlay {
-            if isSearchingApp {
-                ZStack {
-                    Color.black.opacity(0.25)
-                        .ignoresSafeArea()
-                    VStack(spacing: 12) {
-                        ProgressView()
-                        Text("正在与数据库通信…")
-                            .font(.system(size: 14, weight: .medium))
-                    }
-                    .padding(16)
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(12)
-                }
-                .glassEffect()
-            }
-        }
-        .ignoresSafeArea(edges:[.top, .bottom])
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .navigationTitle("备用网页")
         .toolbar {
-            ToolbarItem(placement: leadingToolbarPlacement) {
-                Button {
-                    controller.goBack()
-                } label: {
-                    Image(systemName: "chevron.backward")
-                }
-                .disabled(!controller.canGoBack)
+            ToolbarItem(placement: leadingPlacement) {
+                Button("返回", systemImage: "chevron.backward") { controller.goBack() }
+                    .disabled(!controller.canGoBack)
             }
-
-            ToolbarItemGroup(placement: trailingToolbarPlacement) {
-                Button("Info", systemImage: "info") {
-                    onInfo()
-                }
-                
-                ControlGroup {
-                    Menu {
-                        ForEach(DashboardSegment.allCases) { item in
-                            Button {
-                                segment = item
-                            } label: {
-                                HStack {
-                                    Text(item.rawValue)
-                                    if item == segment {
-                                        Spacer()
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "globe")
+            ToolbarItemGroup(placement: .primaryAction) {
+                Picker("站点", selection: $endpoint) {
+                    Text(SiteEndpoint.s.title).tag(SiteEndpoint.s)
+                    if visibility.showTSite {
+                        Text(SiteEndpoint.t.title).tag(SiteEndpoint.t)
                     }
-                    
-                    ShareLink(item: segment.endpoint.url)
                 }
+                .pickerStyle(.menu)
+                Button("刷新", systemImage: "arrow.clockwise") { controller.reload() }
+                ShareLink(item: endpoint.url)
             }
         }
-        .searchable(text: $searchText, placement: .toolbar, prompt: "搜索应用名称")
-        .onSubmit(of: .search) {
-            onSearchSubmit()
+        .safeAreaInset(edge: .bottom) {
+            Text("备用网页仅用于原生接口不可用时访问站点，日常功能请使用首页、应用和搜索。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(.ultraThinMaterial)
         }
-        .toolbar(removing: .title)
+        .onChange(of: visibility.showTSite) {
+            if !visibility.showTSite, endpoint == .t { endpoint = .s }
+        }
     }
 
-    private var leadingToolbarPlacement: ToolbarItemPlacement {
+    private var leadingPlacement: ToolbarItemPlacement {
 #if os(macOS)
         .navigation
 #else
         .topBarLeading
 #endif
     }
-
-    private var trailingToolbarPlacement: ToolbarItemPlacement {
-#if os(macOS)
-        .primaryAction
-#else
-        .topBarTrailing
-#endif
-    }
 }
 
-#Preview {
-    DashboardView()
+private struct ImportantNoticeGate: View {
+    let accept: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Label("重要提示", systemImage: "exclamationmark.triangle.fill")
+                        .font(.largeTitle.bold())
+                        .foregroundStyle(.red)
+                    DashboardCard {
+                        WarningTextContent()
+                    }
+                    Button("我已阅读并同意", action: accept)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .frame(maxWidth: .infinity)
+                    Text("同意后应用才会加载市场数据。可随后在“我的”中重新查看重要提示和隐私政策。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                }
+                .padding()
+                .frame(maxWidth: 720)
+                .frame(maxWidth: .infinity)
+            }
+            .dashboardPage()
+        }
+        .interactiveDismissDisabled()
+    }
 }

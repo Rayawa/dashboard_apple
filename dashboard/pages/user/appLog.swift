@@ -4,6 +4,7 @@ struct AppLogPageView: View {
     @State private var enabledTypes: Set<ReleaseType> = Set(ReleaseType.allCases)
 
     var body: some View {
+        let filteredLogs = updateLogs.filter { enabledTypes.contains($0.type) }
         ZStack {
             dashboardPageBackground.ignoresSafeArea()
             ScrollView {
@@ -20,18 +21,27 @@ struct AppLogPageView: View {
                                 Text(type.title)
                                     .padding(.horizontal, 14)
                                     .padding(.vertical, 8)
-                                    .background(Capsule().fill(enabledTypes.contains(type) ? Color.white.opacity(0.62) : Color.clear))
+                                    .background(Capsule().fill(enabledTypes.contains(type) ? Color.accentColor.opacity(0.14) : Color.clear))
                             }
                             .buttonStyle(.plain)
                         }
                     }
                     .padding(8)
-                    .background(Color.white, in: Capsule())
-                    .overlay(Capsule().stroke(Color.black.opacity(0.08), lineWidth: 1))
-                    .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+                    .background(.background, in: Capsule())
+                    .overlay(Capsule().stroke(.quaternary, lineWidth: 1))
+                    .shadow(color: .black.opacity(0.05), radius: 8, y: 2)
 
-                    ForEach(updateLogs.filter { enabledTypes.contains($0.type) }) { log in
-                        VStack(alignment: .leading, spacing: 10) {
+                    if filteredLogs.isEmpty {
+                        ContentUnavailableView(
+                            "没有选中的版本类型",
+                            systemImage: "line.3.horizontal.decrease.circle",
+                            description: Text("选择 Beta、RC 或 Release 以查看更新记录。")
+                        )
+                        .padding(.top, 36)
+                    }
+
+                    ForEach(filteredLogs) { log in
+                        DashboardCard {
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack {
                                     Text(log.version).font(.headline)
@@ -48,13 +58,6 @@ struct AppLogPageView: View {
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .padding(16)
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(Color.black.opacity(0.08), lineWidth: 1)
-                        )
-                        .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
                     }
                 }
                 .padding(.vertical, 8)

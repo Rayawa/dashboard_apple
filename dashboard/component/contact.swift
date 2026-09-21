@@ -20,10 +20,10 @@ struct ContactComponent: View {
                     ContactItem(title: "T站网页负责人", name: "tianxiu2b2t", detail: "邮箱：administrator@ttb-network.top") {
                         copy("administrator@ttb-network.top", label: "邮箱")
                     }
-                    ContactItem(title: "鸿蒙应用开发", name: "清霁·Rayawa", detail: "邮箱：rayawa.work@outlook.com") {
+                    ContactItem(title: "客户端开发", name: "清霁·Rayawa", detail: "邮箱：rayawa.work@outlook.com") {
                         copy("rayawa.work@outlook.com", label: "邮箱")
                     }
-                    ContactItem(title: "QQ群", name: "Harmony Gallery 官方交流群", detail: "群号：757273833") {
+                    ContactItem(title: "QQ群", name: "Harmony Dashboard 官方交流群", detail: "群号：757273833") {
                         copy("757273833", label: "群号")
                     }
                     ContactItem(title: "赞助我们", name: "支持项目发展", detail: "点击跳转到爱发电赞助页面") {
@@ -67,14 +67,11 @@ private struct ContactItem: View {
                 Text(detail).font(.footnote).foregroundStyle(.tertiary)
             }
             .frame(maxWidth: .infinity)
-            .padding(16)
-            .background(Color.white, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
         }
         .buttonStyle(.plain)
+        .padding(16)
+        .background(.background, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).stroke(.quaternary))
+        .shadow(color: .black.opacity(0.05), radius: 8, y: 2)
     }
 }

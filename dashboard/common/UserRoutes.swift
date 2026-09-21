@@ -1,10 +1,14 @@
+import Foundation
+
 enum AppRoute: Hashable {
+    case appDetail(AppDetailTarget)
+    case search
+    case submitApp
+    case tutorial
+    case developer
     case friends
-    case friendWeb(WebPagePayload)
+    case web(WebPagePayload)
     case contact
-    case about
-    case aboutWeb(WebPagePayload)
-    case queryWeb(WebPagePayload)
     case appLog
     case htmlPage(HTMLPagePayload)
 }
@@ -12,18 +16,22 @@ enum AppRoute: Hashable {
 extension AppRoute: Identifiable {
     var id: String {
         switch self {
+        case .appDetail(let target):
+            "appDetail:\(target.appId ?? target.packageName ?? "unknown")"
+        case .search:
+            "search"
+        case .submitApp:
+            "submitApp"
+        case .tutorial:
+            "tutorial"
+        case .developer:
+            "developer"
         case .friends:
             "friends"
-        case .friendWeb(let payload):
-            "friendWeb:\(payload.title):\(payload.urlString)"
+        case .web(let payload):
+            "web:\(payload.title):\(payload.url.absoluteString)"
         case .contact:
             "contact"
-        case .about:
-            "about"
-        case .aboutWeb(let payload):
-            "aboutWeb:\(payload.title):\(payload.urlString)"
-        case .queryWeb(let payload):
-            "queryWeb:\(payload.title):\(payload.urlString)"
         case .appLog:
             "appLog"
         case .htmlPage(let payload):

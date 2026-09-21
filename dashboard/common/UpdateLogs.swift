@@ -1,4 +1,5 @@
 let updateLogs: [UpdateLog] = [
+    UpdateLog(version: "V3.1.0", date: "2026-9-21", type: .release, items: ["以 SwiftUI 重写首页、市场概况、应用总表、搜索和详情页面", "新增原生评分、SDK、API 历史、下载增长榜、下载量与评分趋势图表", "新增离线缓存、高级组合搜索、智能粘贴解析、自动投稿和三端 NavigationSplitView 适配", "新增应用详情深链、完整友链、开发者诊断和原生隐私页面", "网页入口调整为备用模式，并与后端可见性配置联动", "收紧 WebView、网络输入、沙盒权限与本地隐私边界"]),
     UpdateLog(version: "V2.0.3", date: "2026-5-9", type: .release, items: ["修复了特定网络环境下访问不到S站的问题", "更新友情链接", "修复已知问题，提升应用稳定性"]),
     UpdateLog(version: "V2.0.2", date: "2026-5-1", type: .release, items: ["修复分享到看板查询页面不加载的严重bug", "调整了UA", "更新隐私协议，增加了对于用户数据访问的声明"]),
     UpdateLog(version: "V2.0.1", date: "2026-4-25", type: .release, items: ["T站已恢复开启", "修复查询过程中存在的页面不弹出的问题", "将应用显示名称从鸿蒙应用看板更换至Hm应用看板"]),
