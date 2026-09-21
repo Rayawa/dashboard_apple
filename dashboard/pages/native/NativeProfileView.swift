@@ -55,12 +55,12 @@ struct NativeProfileView: View {
     private var identity: some View {
         DashboardCard {
             VStack(spacing: 12) {
-                Image(systemName: "square.grid.2x2.fill")
-                    .font(.system(size: 48, weight: .semibold))
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.tint)
+                Image("DashboardBrand")
+                    .resizable()
+                    .scaledToFit()
                     .frame(width: 94, height: 94)
-                    .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .accessibilityHidden(true)
                 Text("Dashboard 应用看板")
                     .font(.system(.largeTitle, design: .rounded, weight: .bold))
                     .multilineTextAlignment(.center)
@@ -121,9 +121,9 @@ struct NativeProfileView: View {
                     .font(.headline)
                     .foregroundStyle(.primary)
                     .padding(.bottom, 8)
-                externalLink("项目网站首页", icon: "house", url: DashboardURLs.mainPage)
+                externalLink("项目网站首页", asset: "DashboardBrand", url: DashboardURLs.mainPage)
                 Divider()
-                externalLink("订阅 MeoW 频道", icon: "bubble.left.and.bubble.right", url: DashboardURLs.meowChannel)
+                externalLink("订阅 MeoW 频道", asset: "MeoW", url: DashboardURLs.meowChannel)
                 Divider()
                 NavigationLink(value: AppRoute.web(.init(title: "API 文档说明", url: DashboardURLs.apiDocs))) {
                     row("API 文档说明", icon: "doc.text")
@@ -169,13 +169,26 @@ struct NativeProfileView: View {
         }
     }
 
-    private func externalLink(_ title: String, icon: String, url: URL) -> some View {
-        Link(destination: url) { row(title, icon: icon, external: true) }.buttonStyle(.plain)
+    private func externalLink(_ title: String, icon: String? = nil, asset: String? = nil, url: URL) -> some View {
+        Link(destination: url) { row(title, icon: icon, asset: asset, external: true) }.buttonStyle(.plain)
     }
 
-    private func row(_ title: String, icon: String, external: Bool = false) -> some View {
-        HStack {
-            Label(title, systemImage: icon)
+    private func row(_ title: String, icon: String? = nil, asset: String? = nil, external: Bool = false) -> some View {
+        HStack(spacing: 10) {
+            if let asset {
+                Image(asset)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 26, height: 26)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                    .accessibilityHidden(true)
+            } else if let icon {
+                Image(systemName: icon)
+                    .foregroundStyle(.tint)
+                    .frame(width: 26)
+                    .accessibilityHidden(true)
+            }
+            Text(title)
             Spacer()
             Image(systemName: external ? "arrow.up.right" : "chevron.right").foregroundStyle(.tertiary)
         }

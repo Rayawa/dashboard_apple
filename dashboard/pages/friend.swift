@@ -6,32 +6,32 @@ struct FriendPageView: View {
     @Environment(\.dashboardVisibility) private var visibility
 
     private let friendSites: [FriendLink] = [
-        .init(id: "hap", title: "Hap资源站", url: DashboardURLs.hapStore, icon: "shippingbox"),
-        .init(id: "dz", title: "应用荟萃", url: DashboardURLs.dzTap, icon: "square.stack.3d.up"),
-        .init(id: "open", title: "Open Store", url: DashboardURLs.openStore, icon: "shippingbox.circle"),
-        .init(id: "next", title: "NEXT Store", url: DashboardURLs.nextStore, icon: "bag"),
-        .init(id: "fangzhou", title: "方舟网", url: DashboardURLs.fangzhou, icon: "ferry"),
+        .init(id: "hap", title: "Hap资源站", url: DashboardURLs.hapStore, icon: .asset("HapStore")),
+        .init(id: "dz", title: "应用荟萃", url: DashboardURLs.dzTap, icon: .asset("DZTap")),
+        .init(id: "open", title: "Open Store", url: DashboardURLs.openStore, icon: .asset("OpenStore")),
+        .init(id: "next", title: "NEXT Store", url: DashboardURLs.nextStore, icon: .asset("NextStore")),
+        .init(id: "fangzhou", title: "方舟网", url: DashboardURLs.fangzhou, icon: .system("ferry")),
     ]
 
     private let friendApps: [FriendLink] = [
-        .init(id: "getrace", title: "迹得", packageName: "cn.biandangroup.getrace", icon: "figure.run"),
-        .init(id: "subscribe", title: "记得订阅", packageName: "com.xxtstudio.accountDL", icon: "bell.badge"),
-        .init(id: "subscribe-atomic", title: "记得订阅（元服务）", packageName: "com.atomicservice.6917600885144283966", icon: "bell.and.waves.left.and.right"),
-        .init(id: "paper-talk", title: "纸语", packageName: "com.my.papertalk", icon: "text.book.closed"),
+        .init(id: "getrace", title: "迹得", packageName: "cn.biandangroup.getrace", icon: .asset("JiDe")),
+        .init(id: "subscribe", title: "记得订阅", packageName: "com.xxtstudio.accountDL", icon: .asset("Subscription")),
+        .init(id: "subscribe-atomic", title: "记得订阅（元服务）", packageName: "com.atomicservice.6917600885144283966", icon: .asset("SubscriptionAtomic")),
+        .init(id: "paper-talk", title: "纸语", packageName: "com.my.papertalk", icon: .asset("PaperTalk")),
     ]
 
     private let otherSites: [FriendLink] = [
-        .init(id: "ag", title: "AppGallery统计数据", url: DashboardURLs.agStatistics, icon: "chart.bar")
+        .init(id: "ag", title: "AppGallery统计数据", url: DashboardURLs.agStatistics, icon: .system("chart.bar"))
     ]
 
     private var projectSites: [FriendLink] {
         var links = [
-            FriendLink(id: "project", title: "项目网站首页", url: DashboardURLs.mainPage, icon: "house"),
-            FriendLink(id: "s", title: "S站", url: DashboardURLs.sBase, icon: "server.rack"),
-            FriendLink(id: "egui", title: "Egui", url: DashboardURLs.eguiBase, icon: "arrow.up.right.square", opensExternally: true),
+            FriendLink(id: "project", title: "项目网站首页", url: DashboardURLs.mainPage, icon: .asset("DashboardBrand")),
+            FriendLink(id: "s", title: "S站", url: DashboardURLs.sBase, icon: .asset("DashboardBrand")),
+            FriendLink(id: "egui", title: "Egui", url: DashboardURLs.eguiBase, icon: .asset("DashboardBrand"), opensExternally: true),
         ]
         if visibility.showTSite {
-            links.append(FriendLink(id: "t", title: "T站", url: DashboardURLs.tDashboard, icon: "globe.asia.australia"))
+            links.append(FriendLink(id: "t", title: "T站", url: DashboardURLs.tDashboard, icon: .asset("DashboardBrand")))
         }
         return links
     }
@@ -92,9 +92,23 @@ struct FriendPageView: View {
         }
     }
 
-    private func row(_ title: String, icon: String, external: Bool) -> some View {
-        HStack {
-            Label(title, systemImage: icon)
+    private func row(_ title: String, icon: FriendIcon, external: Bool) -> some View {
+        HStack(spacing: 10) {
+            switch icon {
+            case .system(let name):
+                Image(systemName: name)
+                    .foregroundStyle(.tint)
+                    .frame(width: 28)
+                    .accessibilityHidden(true)
+            case .asset(let name):
+                Image(name)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 28, height: 28)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .accessibilityHidden(true)
+            }
+            Text(title)
             Spacer()
             Image(systemName: external ? "arrow.up.right" : "chevron.right")
                 .foregroundStyle(.secondary)
@@ -109,7 +123,7 @@ private struct FriendLink: Identifiable, Hashable {
     let title: String
     let url: URL?
     let packageName: String?
-    let icon: String
+    let icon: FriendIcon
     let opensExternally: Bool
 
     init(
@@ -117,7 +131,7 @@ private struct FriendLink: Identifiable, Hashable {
         title: String,
         url: URL? = nil,
         packageName: String? = nil,
-        icon: String,
+        icon: FriendIcon,
         opensExternally: Bool = false
     ) {
         self.id = id
@@ -127,4 +141,9 @@ private struct FriendLink: Identifiable, Hashable {
         self.icon = icon
         self.opensExternally = opensExternally
     }
+}
+
+private enum FriendIcon: Hashable {
+    case system(String)
+    case asset(String)
 }

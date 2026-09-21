@@ -21,7 +21,7 @@ enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
 
     var symbol: String {
         switch self {
-        case .sStation: "network"
+        case .sStation: "wifi.router.fill"
         case .home: "house"
         case .apps: "square.grid.2x2"
         case .profile: "person.crop.circle"

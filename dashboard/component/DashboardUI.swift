@@ -88,12 +88,9 @@ struct AppIconView: View {
             case .success(let image):
                 image.resizable().scaledToFill()
             default:
-                ZStack {
-                    Color.accentColor.opacity(0.12)
-                    Image(systemName: "app.fill")
-                        .foregroundStyle(.tint)
-                        .font(.system(size: size * 0.42))
-                }
+                Image("AppPlaceholder")
+                    .resizable()
+                    .scaledToFill()
             }
         }
         .frame(width: size, height: size)
