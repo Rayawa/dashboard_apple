@@ -62,25 +62,22 @@ struct HomeDashboardView: View {
     }
 
     private var greeting: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(greetingText)
-                .font(.largeTitle.bold())
-            Text("欢迎来到 Dashboard 应用看板")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
+        DashboardHero(
+            title: greetingText,
+            subtitle: "欢迎来到 Dashboard 应用看板，探索 HarmonyOS 应用生态的最新动态。",
+            systemImage: "chart.bar.xaxis"
+        )
     }
 
     private func overview(_ info: MarketInfo) -> some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 14)], spacing: 14) {
-            StatCard(title: "应用总数", value: DashboardFormat.count(info.appCount.apps + info.appCount.atomicServices), icon: "square.grid.2x2", tint: .blue)
-            StatCard(title: "应用", value: DashboardFormat.count(info.appCount.apps), icon: "app", tint: .cyan)
-            StatCard(title: "元服务", value: DashboardFormat.count(info.appCount.atomicServices), icon: "atom", tint: .mint)
-            StatCard(title: "开发者", value: DashboardFormat.count(info.developerCount), icon: "person.2", tint: .purple)
-            StatCard(title: "专题", value: DashboardFormat.count(info.substanceCount), icon: "rectangle.stack", tint: .orange)
+            StatCard(title: "应用总数", value: DashboardFormat.count(info.appCount.apps + info.appCount.atomicServices), icon: "square.grid.2x2", tint: .accentColor)
+            StatCard(title: "应用", value: DashboardFormat.count(info.appCount.apps), icon: "app", tint: .accentColor)
+            StatCard(title: "元服务", value: DashboardFormat.count(info.appCount.atomicServices), icon: "atom", tint: .accentColor)
+            StatCard(title: "开发者", value: DashboardFormat.count(info.developerCount), icon: "person.2", tint: .accentColor)
+            StatCard(title: "专题", value: DashboardFormat.count(info.substanceCount), icon: "rectangle.stack", tint: .accentColor)
             if visibility.showInstallCount {
-                StatCard(title: "鸿蒙装机量", value: DashboardFormat.count(info.appCount.maxDownloadCount), icon: "arrow.down.app", tint: .pink)
+                StatCard(title: "鸿蒙装机量", value: DashboardFormat.count(info.appCount.maxDownloadCount), icon: "arrow.down.app", tint: .accentColor)
             }
         }
     }
@@ -99,7 +96,9 @@ struct HomeDashboardView: View {
     private var rankingColumns: some View {
         if visibility.showDownloadHistory {
             DashboardCard {
-                Text("每日最高下载量应用").font(.headline)
+                Label("每日最高下载量应用", systemImage: "trophy.fill")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
                 if dailyMaxApps.isEmpty {
                     Text("暂无每日快照数据")
                         .font(.caption).foregroundStyle(.secondary).padding(.vertical, 10)
@@ -127,7 +126,9 @@ struct HomeDashboardView: View {
         }
         if !developers.isEmpty {
             DashboardCard {
-                Text("开发者应用数量排行").font(.headline)
+                Label("开发者应用数量排行", systemImage: "person.2.fill")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
                 ForEach(Array(developers.prefix(8).enumerated()), id: \.element.id) { index, item in
                     HStack {
                         Text("\(index + 1)").monospacedDigit().foregroundStyle(.secondary).frame(width: 24)
@@ -145,7 +146,11 @@ struct HomeDashboardView: View {
     private var recent: some View {
         if !recentApps.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text("最近收录").font(.title2.bold())
+                DashboardSectionTitle(
+                    title: "最近收录",
+                    systemImage: "sparkles",
+                    trailingText: "持续更新"
+                )
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 14)], spacing: 14) {
                     ForEach(recentApps) { app in
                         NavigationLink(value: AppRoute.appDetail(.init(appId: app.appId, packageName: app.pkgName, preview: app))) {
@@ -237,7 +242,7 @@ private struct StatCard: View {
     let tint: Color
 
     var body: some View {
-        DashboardCard {
+        DashboardCard(tint: tint) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(title).foregroundStyle(.secondary)
@@ -245,10 +250,11 @@ private struct StatCard: View {
                 }
                 Spacer()
                 Image(systemName: icon)
-                    .font(.title2)
+                    .font(.title2.weight(.semibold))
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(tint)
-                    .padding(10)
-                    .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                    .padding(11)
+                    .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
         }
         .accessibilityElement(children: .combine)
@@ -320,10 +326,10 @@ private struct SyncStatusView: View {
             }
             return "预计剩余：\(DashboardFormat.duration(max(0, estimated - elapsed)))"
         }
-        guard let initial = info.syncStatus.nextSyncCountdown else {
+        guard let initial = info.syncStatus.nextSyncCountdown?.timeInterval else {
             return "下次同步：等待服务安排"
         }
-        let elapsed = Int(date.timeIntervalSince(observedAt))
-        return "下次同步：\(DashboardFormat.duration(TimeInterval(max(0, initial - elapsed))))"
+        let elapsed = date.timeIntervalSince(observedAt)
+        return "下次同步：\(DashboardFormat.duration(max(0, initial - elapsed)))"
     }
 }

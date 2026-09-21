@@ -6,35 +6,6 @@ import UIKit
 import AppKit
 #endif
 
-enum SiteEndpoint: String, CaseIterable, Identifiable {
-    case s
-    case t
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .s: "S站"
-        case .t: "T站"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .s: "server.rack"
-        case .t: "safari"
-        }
-    }
-
-    var url: URL {
-        switch self {
-        case .s: return DashboardURLs.sBase
-        case .t: return DashboardURLs.tBase
-        }
-    }
-
-}
-
 enum DashboardURLs {
     static let mainPage = URL(string: "https://dashboard.rayawa.top")!
     static let sBase = URL(string: "https://ddns.shenjack.top:10003/")!

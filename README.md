@@ -1,6 +1,6 @@
 # Dashboard 应用看板（Apple 原生版）
 
-`dashboard-apple` 是 Harmony Gallery / Dashboard 应用看板的 SwiftUI 原生客户端，与 `dashboard-HarmonyOS` 共用 `harmony_markget_get` 后端。iPhone、iPad 和 macOS 的主要数据浏览、搜索、图表与应用详情均由原生界面完成；WebView 仅保留为备用站点及外部文档入口。
+`dashboard-apple` 是 Harmony Gallery / Dashboard 应用看板的 SwiftUI 原生客户端，与 `dashboard-HarmonyOS` 共用 `harmony_markget_get` 后端。iPhone、iPad 和 macOS 的数据浏览、搜索、图表与应用详情均由原生界面完成；S站及外部文档使用受限 WebView。
 
 - Bundle ID：`top.rayawa.dashboard.apple`
 - 版本：`3.1.0`（构建号 `30100001`）
@@ -53,9 +53,9 @@
 - Apple 平台开发者诊断信息，不采集或展示精确硬件型号
 - 首次启动必须确认重要提示后才会请求市场数据
 
-### 备用网页
+### S站
 
-备用入口提供受限的 `WKWebView`，用于原生接口暂时不可用时访问 S 站。T 站是否可选由后端 `/api/v0/dashboard/config` 控制。
+侧栏首项提供受限的 `WKWebView` 访问 S站，并使用系统工具栏提供返回、刷新和分享操作。应用数据浏览与搜索仍由原生页面完成。
 
 ## 响应式布局
 
@@ -65,7 +65,11 @@
 - iPad：侧栏与详情双栏显示，卡片和图表按可用宽度重排。
 - macOS：可调整侧栏宽度，内容限制最大阅读宽度，列表、图表和工具栏使用桌面布局。
 
-统计卡片、排行榜、应用列表和详情字段使用自适应网格或 `ViewThatFits`，没有写死设备型号或屏幕方向。
+侧栏从上到下固定为 S站、首页、应用、我的。导航采用 Apple Landmarks 示例一致的值导航模式：侧栏 `NavigationLink(value:)` 更新当前栏目，详情列只保留一个统一的 `NavigationStack`，默认显示首页；系统根据窗口宽度自动决定侧栏、返回按钮与列切换行为。搜索不占用一级入口，而是由“应用”页工具栏进入。
+
+导航栏、工具栏、分段控件、搜索入口、弹窗和按钮全部采用 iOS 26 / macOS 26 原生组件，由系统自动应用 Liquid Glass、交互反馈和可访问性行为。内容卡片遵循 Apple 的内容层设计，不重复叠加玻璃材质；内容区域使用系统分组背景、标准内容底色、分隔线与单一 Accent Color，只有状态警告和图表数据使用对应语义色。
+
+应用页的“概况 / 总表”切换器与 HarmonyOS 版一致：宽度充足时位于工具栏中央；紧凑宽度、小窗口或辅助功能字号下自动转移到页面顶部，并保持可见。统计卡片、排行榜、应用列表和详情字段使用自适应网格或 `ViewThatFits`，同时支持深色模式、Dynamic Type 和辅助功能标签。
 
 ## 数据与缓存
 

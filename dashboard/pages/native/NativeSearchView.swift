@@ -15,8 +15,6 @@ struct NativeSearchView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                searchCard
-
                 if isSearching || errorMessage != nil || !results.isEmpty {
                     HStack(spacing: 8) {
                         if isSearching { ProgressView().controlSize(.small) }
@@ -59,28 +57,15 @@ struct NativeSearchView: View {
             .frame(maxWidth: .infinity)
         }
         .dashboardPage()
-        .navigationTitle("搜索")
+        .navigationTitle("搜索应用")
+        .searchable(
+            text: $query,
+            placement: .automatic,
+            prompt: "应用名称、包名、App ID 或应用市场链接"
+        )
+        .onSubmit(of: .search, search)
         .task {
             if recommendations.isEmpty { await loadRecommendations() }
-        }
-    }
-
-    private var searchCard: some View {
-        DashboardCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("查找或收录应用", systemImage: "magnifyingglass")
-                    .font(.title2.bold())
-                Text("支持应用名称、包名、App ID，以及华为应用市场或看板链接。未收录的包名和 App ID 会自动尝试投稿。")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                HStack {
-                    TextField("输入应用信息", text: $query)
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit(search)
-                    Button("搜索", action: search)
-                        .buttonStyle(.borderedProminent)
-                        .disabled(query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSearching)
-                }
-            }
         }
     }
 
@@ -89,7 +74,10 @@ struct NativeSearchView: View {
         if !history.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("搜索历史").font(.title2.bold())
+                    DashboardSectionTitle(
+                        title: "搜索历史",
+                        systemImage: "clock.arrow.circlepath"
+                    )
                     Spacer()
                     Button("删除全部", systemImage: "trash", role: .destructive) {
                         storedHistory = ""
@@ -112,7 +100,10 @@ struct NativeSearchView: View {
     private var recommendationSection: some View {
         if !recommendations.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("搜索推荐").font(.title2.bold())
+                DashboardSectionTitle(
+                    title: "搜索推荐",
+                    systemImage: "wand.and.stars"
+                )
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 12)], spacing: 12) {
                     ForEach(recommendations) { app in
                         NavigationLink(value: AppRoute.appDetail(.init(

@@ -153,7 +153,7 @@ struct MarketOverviewChartsView: View {
         tint: Color
     ) -> some View {
         let visible = Array(points.sorted { $0.sdk < $1.sdk }.suffix(18))
-        return DashboardCard {
+        return DashboardCard(tint: tint) {
             VStack(alignment: .leading, spacing: 12) {
                 Text(title).font(.headline)
                 if let selected = selection.wrappedValue,

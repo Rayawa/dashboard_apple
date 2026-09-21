@@ -6,11 +6,11 @@ struct dashboardApp: App {
         WindowGroup {
             DashboardView()
 #if os(macOS)
-                .frame(minWidth: 1100, minHeight: 760)
+                .frame(minWidth: 760, minHeight: 600)
 #endif
         }
 #if os(macOS)
-        .defaultSize(width: 1360, height: 860)
+        .defaultSize(width: 1180, height: 800)
 #endif
     }
 }

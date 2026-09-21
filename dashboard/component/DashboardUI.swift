@@ -3,20 +3,78 @@ import SwiftUI
 struct DashboardCard<Content: View>: View {
     private let content: Content
 
-    init(@ViewBuilder content: () -> Content) {
+    init(tint: Color = .accentColor, @ViewBuilder content: () -> Content) {
         self.content = content()
     }
 
     var body: some View {
-        content
+        VStack(alignment: .leading, spacing: 0) {
+            content
+        }
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .background(.background, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(.quaternary, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(.primary.opacity(0.08), lineWidth: 0.5)
             }
-            .shadow(color: .black.opacity(0.05), radius: 10, y: 3)
+    }
+}
+
+struct DashboardHero: View {
+    let title: String
+    let subtitle: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 14) {
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 30, weight: .semibold))
+            .symbolRenderingMode(.hierarchical)
+            .foregroundStyle(.tint)
+            .frame(width: 44, height: 44)
+            .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.title2.bold())
+            Text(subtitle)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+struct DashboardSectionTitle: View {
+    let title: String
+    let systemImage: String
+    var tint: Color = .accentColor
+    var trailingText: String?
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: systemImage)
+                .font(.headline)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(tint)
+            Text(title)
+                .font(.title2.bold())
+            Spacer()
+            if let trailingText {
+                Text(trailingText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

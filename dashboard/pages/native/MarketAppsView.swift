@@ -7,7 +7,10 @@ struct MarketAppsView: View {
         var id: String { rawValue }
     }
 
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var mode: Mode = .overview
+    @State private var availableWidth: CGFloat = 1_000
 
     var body: some View {
         Group {
@@ -17,15 +20,49 @@ struct MarketAppsView: View {
             }
         }
         .navigationTitle("应用")
-        .toolbar {
-            ToolbarItem(placement: .principal) {
-                Picker("页面", selection: $mode) {
-                    ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
+        .onGeometryChange(for: CGFloat.self) { geometry in
+            geometry.size.width
+        } action: { width in
+            availableWidth = width
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if usesInlineModePicker {
+                HStack {
+                    modePicker
+                        .frame(maxWidth: 320)
                 }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 260)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .frame(maxWidth: .infinity)
+                .background(.bar)
+                .overlay(alignment: .bottom) { Divider() }
             }
         }
+        .toolbar {
+            if !usesInlineModePicker {
+                ToolbarItem(placement: .principal) {
+                    modePicker
+                        .frame(width: 240)
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                NavigationLink(value: AppRoute.search) {
+                    Label("搜索应用", systemImage: "magnifyingglass")
+                }
+            }
+        }
+    }
+
+    private var usesInlineModePicker: Bool {
+        horizontalSizeClass == .compact || dynamicTypeSize.isAccessibilitySize || availableWidth < 620
+    }
+
+    private var modePicker: some View {
+        Picker("应用页面", selection: $mode) {
+            ForEach(Mode.allCases) { Text($0.rawValue).tag($0) }
+        }
+        .pickerStyle(.segmented)
+        .accessibilityLabel("应用页面")
     }
 }
 

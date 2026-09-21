@@ -26,6 +26,28 @@ nonisolated struct SyncDuration: Codable, Hashable, Sendable {
     let secs: Int
     let nanos: Int
 
+    private enum CodingKeys: String, CodingKey {
+        case secs
+        case nanos
+    }
+
+    init(from decoder: Decoder) throws {
+        if let seconds = try? decoder.singleValueContainer().decode(Int.self) {
+            secs = seconds
+            nanos = 0
+            return
+        }
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        secs = try container.decode(Int.self, forKey: .secs)
+        nanos = try container.decodeIfPresent(Int.self, forKey: .nanos) ?? 0
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(secs, forKey: .secs)
+        try container.encode(nanos, forKey: .nanos)
+    }
+
     var timeInterval: TimeInterval {
         TimeInterval(secs) + TimeInterval(nanos) / 1_000_000_000
     }
@@ -35,7 +57,7 @@ nonisolated struct SyncStatusInfo: Codable, Hashable, Sendable {
     let elapsedTime: SyncDuration?
     let estimatedTotalTime: SyncDuration?
     let isSyncingAll: Bool
-    let nextSyncCountdown: Int?
+    let nextSyncCountdown: SyncDuration?
     let progress: [Int]?
     let totalFailed: Int
     let totalInserted: Int

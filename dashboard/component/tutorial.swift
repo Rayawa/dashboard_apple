@@ -45,9 +45,9 @@ struct TutorialComponent: View {
                         ])
                     }
 
-                    TutorialCard(title: "备用网页与友链", systemImage: "globe") {
+                    TutorialCard(title: "S站与友链", systemImage: "network") {
                         tutorialSection(items: [
-                            "原生首页、应用和搜索是主要入口；“备用网页”用于接口异常时临时访问站点。",
+                            "侧栏按 S站、首页、应用、我的排列；应用搜索位于“应用”页工具栏中。",
                             "T 站和下载相关数据仅在服务端允许时显示。",
                             "友链应用会进入原生详情；第三方站点内容由各自维护者负责。",
                         ])
@@ -104,7 +104,7 @@ struct TutorialComponent: View {
         VStack(alignment: .leading, spacing: 7) {
             Text("欢迎使用 Dashboard 应用看板")
                 .font(.system(.largeTitle, design: .rounded, weight: .bold))
-            Text("Apple 原生版覆盖数据总览、应用列表、图表分析、搜索、详情、投稿与个人设置；网页只保留为备用入口。")
+            Text("Apple 原生版侧栏提供 S站、首页、应用和我的；应用页内覆盖图表、总表、搜索、详情与投稿。")
                 .foregroundStyle(.secondary)
             Button("访问项目网站", systemImage: "arrow.up.right.square") {
                 openURL(DashboardURLs.mainPage)

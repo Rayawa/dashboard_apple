@@ -53,31 +53,39 @@ struct NativeProfileView: View {
     }
 
     private var identity: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "square.grid.2x2.fill")
-                .font(.system(size: 82))
-                .foregroundStyle(.tint)
-            Text("Dashboard 应用看板")
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                .multilineTextAlignment(.center)
-            Text("Apple 原生版")
-                .font(.title3.weight(.semibold)).foregroundStyle(.secondary)
-            Spacer(minLength: 10)
-            Text("版本 \(DashboardMeta.appVersion)").font(.footnote).foregroundStyle(.secondary)
-            Text("Designed & Developed by Ray Chen (Rayawa)").font(.footnote).foregroundStyle(.secondary)
-            Text("Copyright © 2026. All rights reserved.").font(.footnote).foregroundStyle(.secondary)
-            Text("本应用备案域名：rayawa.top").font(.footnote).foregroundStyle(.secondary)
-            Link("京ICP备2025153453号", destination: DashboardURLs.miit).font(.footnote)
+        DashboardCard {
+            VStack(spacing: 12) {
+                Image(systemName: "square.grid.2x2.fill")
+                    .font(.system(size: 48, weight: .semibold))
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.tint)
+                    .frame(width: 94, height: 94)
+                    .background(Color.accentColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                Text("Dashboard 应用看板")
+                    .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                    .multilineTextAlignment(.center)
+                Text("Apple 原生版")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 10)
+                Text("版本 \(DashboardMeta.appVersion)").font(.footnote).foregroundStyle(.secondary)
+                Text("Designed & Developed by Ray Chen (Rayawa)").font(.footnote).foregroundStyle(.secondary)
+                Text("Copyright © 2026. All rights reserved.").font(.footnote).foregroundStyle(.secondary)
+                Text("本应用备案域名：rayawa.top").font(.footnote).foregroundStyle(.secondary)
+                Link("京ICP备2025153453号", destination: DashboardURLs.miit).font(.footnote)
+            }
+            .frame(maxWidth: .infinity)
         }
-        .padding(24)
-        .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
     }
 
     private var sections: some View {
         VStack(spacing: 20) {
             DashboardCard {
-                Text("设置").font(.headline).padding(.bottom, 8)
+                Label("设置", systemImage: "gearshape.fill")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, 8)
                 LabeledContent("用户名") {
                     TextField("可选", text: $username)
                         .textFieldStyle(.roundedBorder)
@@ -103,14 +111,16 @@ struct NativeProfileView: View {
             }
 
             linkSection(title: "功能", routes: [
-                ("搜索应用", "magnifyingglass", .search),
                 ("投稿应用", "square.and.arrow.up", .submitApp),
                 ("友情链接", "link", .friends),
                 ("查看教程", "questionmark.circle", .tutorial),
             ])
 
             DashboardCard {
-                Text("更多").font(.headline).padding(.bottom, 8)
+                Label("更多", systemImage: "ellipsis.circle.fill")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, 8)
                 externalLink("项目网站首页", icon: "house", url: DashboardURLs.mainPage)
                 Divider()
                 externalLink("订阅 MeoW 频道", icon: "bubble.left.and.bubble.right", url: DashboardURLs.meowChannel)
@@ -127,7 +137,10 @@ struct NativeProfileView: View {
             }
 
             DashboardCard {
-                Text("帮助").font(.headline).padding(.bottom, 8)
+                Label("帮助", systemImage: "questionmark.circle.fill")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .padding(.bottom, 8)
                 Button { showWarning = true } label: { row("重要提示", icon: "exclamationmark.triangle") }.buttonStyle(.plain)
                 Divider()
                 NavigationLink(value: AppRoute.appLog) { row("App 更新日志", icon: "clock.arrow.circlepath") }.buttonStyle(.plain)
@@ -145,7 +158,10 @@ struct NativeProfileView: View {
 
     private func linkSection(title: String, routes: [(String, String, AppRoute)]) -> some View {
         DashboardCard {
-            Text(title).font(.headline).padding(.bottom, 8)
+            Label(title, systemImage: "square.grid.2x2.fill")
+                .font(.headline)
+                .foregroundStyle(.primary)
+                .padding(.bottom, 8)
             ForEach(Array(routes.enumerated()), id: \.offset) { index, item in
                 NavigationLink(value: item.2) { row(item.0, icon: item.1) }.buttonStyle(.plain)
                 if index < routes.count - 1 { Divider() }

@@ -140,7 +140,8 @@ struct NativeAppDetailView: View {
         }
 
         return DashboardCard {
-            Text("详细信息").font(.title2.bold()).padding(.bottom, 4)
+            DashboardSectionTitle(title: "详细信息", systemImage: "info.circle.fill")
+                .padding(.bottom, 4)
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 260), spacing: 10)], spacing: 10) {
                 ForEach(fields, id: \.0) { field in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -171,7 +172,7 @@ struct NativeAppDetailView: View {
         ]
         if counts.contains(where: { $0.count > 0 }) {
             DashboardCard {
-                Text("评分分布").font(.title2.bold())
+                DashboardSectionTitle(title: "评分分布", systemImage: "star.fill", tint: .orange)
                 Chart(counts, id: \.star) { item in
                     BarMark(
                         x: .value("评分数", item.count),
@@ -193,7 +194,7 @@ struct NativeAppDetailView: View {
     private func description(_ app: MarketApp) -> some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("应用介绍").font(.title2.bold())
+                DashboardSectionTitle(title: "应用介绍", systemImage: "text.alignleft")
                 Text(app.description.isEmpty ? "暂无介绍" : app.description)
                     .lineSpacing(5)
                     .textSelection(.enabled)
@@ -209,7 +210,7 @@ struct NativeAppDetailView: View {
     private func screenshots(_ app: MarketApp) -> some View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 12) {
-                Text("应用截图").font(.title2.bold())
+                DashboardSectionTitle(title: "应用截图", systemImage: "photo.on.rectangle.angled")
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 14) {
                         ForEach(app.screenshots) { screenshot in
