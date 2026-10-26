@@ -31,14 +31,17 @@ enum DashboardSection: String, CaseIterable, Identifiable, Hashable {
 }
 
 struct DashboardView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var path: [AppRoute] = []
     @State private var selectedSection: DashboardSection? = .home
     @State private var compactColumn: NavigationSplitViewColumn = .detail
+    @State private var splitVisibility: NavigationSplitViewVisibility = .automatic
+    @State private var availableWidth: CGFloat = 1_000
     @State private var visibility = DashboardVisibilityConfig.restricted
     @AppStorage("accepted_important_notice_v3") private var acceptedNotice = false
 
     var body: some View {
-        NavigationSplitView(preferredCompactColumn: $compactColumn) {
+        NavigationSplitView(columnVisibility: $splitVisibility, preferredCompactColumn: $compactColumn) {
             List(selection: sectionSelection) {
                 ForEach(DashboardSection.mainPages) { section in
                     NavigationLink(value: section) {
@@ -59,10 +62,23 @@ struct DashboardView: View {
                             .accessibilityHidden(true)
                     }
                 }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if acceptedNotice, showsFloatingNavigation {
+                        FloatingDashboardNavigation(selection: sectionSelection)
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                            .padding(.bottom, 6)
+                    }
+                }
                 .navigationDestination(for: AppRoute.self, destination: destination)
             }
         }
         .navigationSplitViewStyle(.balanced)
+        .onGeometryChange(for: CGFloat.self) { geometry in
+            geometry.size.width
+        } action: { width in
+            availableWidth = width
+        }
         .environment(\.dashboardVisibility, visibility)
         .task(id: acceptedNotice) {
             guard acceptedNotice else { return }
@@ -91,8 +107,14 @@ struct DashboardView: View {
                 guard newValue != selectedSection else { return }
                 path.removeAll()
                 selectedSection = newValue
+                compactColumn = .detail
+                DashboardFeedback.selection()
             }
         )
+    }
+
+    private var showsFloatingNavigation: Bool {
+        horizontalSizeClass == .compact || splitVisibility == .detailOnly || availableWidth < 680
     }
 
     @ViewBuilder
@@ -129,6 +151,47 @@ struct DashboardView: View {
         case .htmlPage(let payload):
             HTMLPageView(payload: payload)
         }
+    }
+}
+
+private struct FloatingDashboardNavigation: View {
+    @Binding var selection: DashboardSection?
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(DashboardSection.mainPages) { section in
+                Button {
+                    selection = section
+                } label: {
+                    VStack(spacing: 3) {
+                        Image(systemName: section.symbol)
+                            .font(.system(size: 16, weight: .semibold))
+                            .symbolVariant(selection == section ? .fill : .none)
+                        Text(section.title)
+                            .font(.caption2.weight(selection == section ? .semibold : .regular))
+                    }
+                    .foregroundStyle(selection == section ? Color.accentColor : Color.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 42)
+                    .background {
+                        if selection == section {
+                            Capsule().fill(Color.accentColor.opacity(0.13))
+                        }
+                    }
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(section.title)
+                .accessibilityAddTraits(selection == section ? .isSelected : [])
+            }
+        }
+        .padding(5)
+        .frame(maxWidth: 460)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay { Capsule().stroke(.primary.opacity(0.1), lineWidth: 0.5) }
+        .shadow(color: .black.opacity(0.14), radius: 12, y: 5)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("主导航")
     }
 }
 

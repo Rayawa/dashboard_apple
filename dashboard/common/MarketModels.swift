@@ -80,8 +80,14 @@ nonisolated struct FlexibleDouble: Codable, Hashable, Sendable {
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let number = try? container.decode(Double.self) {
+            guard number.isFinite else {
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Expected a finite number")
+            }
             value = number
         } else if let text = try? container.decode(String.self), let number = Double(text) {
+            guard number.isFinite else {
+                throw DecodingError.dataCorruptedError(in: container, debugDescription: "Expected a finite numeric string")
+            }
             value = number
         } else {
             throw DecodingError.dataCorruptedError(in: container, debugDescription: "Expected a number or numeric string")

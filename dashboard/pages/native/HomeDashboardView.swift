@@ -70,12 +70,15 @@ struct HomeDashboardView: View {
     }
 
     private func overview(_ info: MarketInfo) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 14)], spacing: 14) {
-            StatCard(title: "应用总数", value: DashboardFormat.count(info.appCount.apps + info.appCount.atomicServices), icon: "square.grid.2x2", tint: .accentColor)
-            StatCard(title: "应用", value: DashboardFormat.count(info.appCount.apps), icon: "app", tint: .accentColor)
-            StatCard(title: "元服务", value: DashboardFormat.count(info.appCount.atomicServices), icon: "atom", tint: .accentColor)
-            StatCard(title: "开发者", value: DashboardFormat.count(info.developerCount), icon: "person.2", tint: .accentColor)
-            StatCard(title: "专题", value: DashboardFormat.count(info.substanceCount), icon: "rectangle.stack", tint: .accentColor)
+        let appCount = max(0, info.appCount.apps)
+        let atomicServiceCount = max(0, info.appCount.atomicServices)
+        let totalAppCount = DashboardDataSupport.addingNonnegative(atomicServiceCount, to: appCount)
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 14)], spacing: 14) {
+            StatCard(title: "应用总数", value: DashboardFormat.count(totalAppCount), icon: "square.grid.2x2", tint: .accentColor)
+            StatCard(title: "应用", value: DashboardFormat.count(appCount), icon: "app", tint: .accentColor)
+            StatCard(title: "元服务", value: DashboardFormat.count(atomicServiceCount), icon: "atom", tint: .accentColor)
+            StatCard(title: "开发者", value: DashboardFormat.count(max(0, info.developerCount)), icon: "person.2", tint: .accentColor)
+            StatCard(title: "专题", value: DashboardFormat.count(max(0, info.substanceCount)), icon: "rectangle.stack", tint: .accentColor)
             if visibility.showInstallCount {
                 StatCard(title: "鸿蒙装机量", value: DashboardFormat.count(info.appCount.maxDownloadCount), icon: "arrow.down.app", tint: .accentColor)
             }
@@ -206,21 +209,24 @@ struct HomeDashboardView: View {
             var failedSupplementalRequests = 0
 
             if let recentResult = try? await recentRequest {
-                recentApps = recentResult.data.data.data
+                recentApps = recentResult.data.data.data.stableUniqued(by: \MarketApp.id)
                 if recentResult.isStale { staleDates.append(recentResult.cachedAt) }
             } else {
                 failedSupplementalRequests += 1
             }
             if visibility.showDownloadHistory {
                 if let dailyResult = try? await AppAPIService.dailyMaxDownloads(force: force) {
-                    dailyMaxApps = Array(dailyResult.data.data.sorted { $0.reportDate > $1.reportDate }.prefix(10))
+                    dailyMaxApps = Array(dailyResult.data.data
+                        .stableUniqued(by: \DailyMaxDownloadApp.id)
+                        .sorted { $0.reportDate > $1.reportDate }
+                        .prefix(10))
                     if dailyResult.isStale { staleDates.append(dailyResult.cachedAt) }
                 } else {
                     failedSupplementalRequests += 1
                 }
             }
             if let developerResult = try? await developerRequest {
-                developers = developerResult.data.data
+                developers = developerResult.data.data.stableUniqued(by: \DeveloperRankingEntry.id)
                 if developerResult.isStale { staleDates.append(developerResult.cachedAt) }
             } else {
                 failedSupplementalRequests += 1
@@ -288,9 +294,9 @@ private struct SyncStatusView: View {
                     .font(.caption.bold())
                     .foregroundStyle(info.syncStatus.isSyncingAll ? Color.blue : Color.green)
             }
-            if let progress = info.syncStatus.progress, progress.count >= 2, progress[1] > 0 {
-                ProgressView(value: Double(progress[0]), total: Double(progress[1]))
-                Text("进度 \(progress[0]) / \(progress[1])").font(.caption).foregroundStyle(.secondary)
+            if let progress = DashboardDataSupport.progress(info.syncStatus.progress) {
+                ProgressView(value: Double(progress.value), total: Double(progress.total))
+                Text("进度 \(progress.value) / \(progress.total)").font(.caption).foregroundStyle(.secondary)
             }
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 125), alignment: .leading)], alignment: .leading, spacing: 5) {
                 statusValue("已处理", value: info.syncStatus.totalProcessed)

@@ -29,11 +29,16 @@ actor MarketCache {
         maximumAge: TimeInterval
     ) -> APIDataResult<Value>? {
         let url = fileURL(for: key)
-        guard let data = try? Data(contentsOf: url),
-              let entry = try? decoder.decode(Entry<Value>.self, from: data) else {
+        guard freshFor.isFinite, maximumAge.isFinite,
+              freshFor >= 0, maximumAge >= freshFor else {
             return nil
         }
-        let age = Date().timeIntervalSince(entry.savedAt)
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        guard let entry = try? decoder.decode(Entry<Value>.self, from: data) else {
+            try? FileManager.default.removeItem(at: url)
+            return nil
+        }
+        let age = max(0, Date().timeIntervalSince(entry.savedAt))
         guard age <= maximumAge else {
             try? FileManager.default.removeItem(at: url)
             return nil
@@ -72,7 +77,7 @@ actor MarketCache {
         var total: Int64 = 0
         for case let url as URL in enumerator {
             let values = try? url.resourceValues(forKeys: [.fileSizeKey])
-            total += Int64(values?.fileSize ?? 0)
+            total = addingFileSize(values?.fileSize, to: total)
         }
         return total
     }
@@ -103,9 +108,9 @@ actor MarketCache {
             guard let values = try? url.resourceValues(forKeys: [
                 .fileSizeKey, .contentModificationDateKey, .isRegularFileKey,
             ]), values.isRegularFile == true else { continue }
-            let fileSize = Int64(values.fileSize ?? 0)
+            let fileSize = Int64(max(0, values.fileSize ?? 0))
             files.append((url, fileSize, values.contentModificationDate ?? .distantPast))
-            total += fileSize
+            total = addingFileSize(values.fileSize, to: total)
         }
         guard total > maximumCacheBytes else { return }
 
@@ -117,5 +122,11 @@ actor MarketCache {
                 // A failed eviction is non-fatal; the next write will retry trimming.
             }
         }
+    }
+
+    private func addingFileSize(_ size: Int?, to total: Int64) -> Int64 {
+        let value = Int64(max(0, size ?? 0))
+        let (sum, overflow) = max(0, total).addingReportingOverflow(value)
+        return overflow ? Int64.max : sum
     }
 }

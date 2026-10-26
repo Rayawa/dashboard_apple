@@ -387,9 +387,14 @@ private struct NativeAppListView: View {
                 result = try await AppAPIService.appsPage(query, force: force)
             }
             guard requestID == id else { return }
-            apps = result.data.data.data
-            total = result.data.data.totalCount
-            totalPages = max(1, result.data.data.totalPages)
+            apps = result.data.data.data.stableUniqued(by: \MarketApp.id)
+            total = max(0, result.data.data.totalCount)
+            totalPages = DashboardDataSupport.boundedPageCount(
+                reported: result.data.data.totalPages,
+                totalCount: result.data.data.totalCount,
+                pageSize: pageSize
+            )
+            page = min(page, totalPages)
             staleDate = result.isStale ? result.cachedAt : nil
         } catch {
             guard requestID == id else { return }

@@ -71,13 +71,33 @@ struct UAProvider {
 enum DashboardFeedback {
     static func selection(level: Int? = nil) {
         let savedLevel = (UserDefaults.standard.object(forKey: "haptic_level") as? NSNumber)?.intValue ?? 1
-        let configuredLevel = level ?? savedLevel
+        let configuredLevel = min(max(level ?? savedLevel, 0), 2)
         guard configuredLevel > 0 else { return }
 #if os(iOS)
-        let style: UIImpactFeedbackGenerator.FeedbackStyle = configuredLevel > 1 ? .medium : .light
+        let style: UIImpactFeedbackGenerator.FeedbackStyle = configuredLevel > 1 ? .rigid : .soft
         let generator = UIImpactFeedbackGenerator(style: style)
         generator.prepare()
-        generator.impactOccurred()
+        generator.impactOccurred(intensity: configuredLevel > 1 ? 1 : 0.62)
+#elseif os(macOS)
+        NSHapticFeedbackManager.defaultPerformer.perform(
+            configuredLevel > 1 ? .generic : .alignment,
+            performanceTime: .now
+        )
+#endif
+    }
+
+    /// Plays the level being selected. Turning feedback off still receives one
+    /// final, light confirmation; subsequent interactions remain silent.
+    static func preview(level: Int) {
+        let configuredLevel = min(max(level, 0), 2)
+#if os(iOS)
+        if configuredLevel == 0 {
+            let generator = UISelectionFeedbackGenerator()
+            generator.prepare()
+            generator.selectionChanged()
+        } else {
+            selection(level: configuredLevel)
+        }
 #elseif os(macOS)
         NSHapticFeedbackManager.defaultPerformer.perform(
             configuredLevel > 1 ? .generic : .alignment,

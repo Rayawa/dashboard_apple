@@ -225,7 +225,11 @@ struct NativeSearchView: View {
         var apps = first.data.data.data
         var stale = first.isStale
         var cachedAt = first.cachedAt
-        let totalPages = first.data.data.totalPages
+        let totalPages = DashboardDataSupport.boundedPageCount(
+            reported: first.data.data.totalPages,
+            totalCount: first.data.data.totalCount,
+            pageSize: 100
+        )
 
         if totalPages > 1 {
             for page in 2...totalPages {
@@ -248,6 +252,7 @@ struct NativeSearchView: View {
             }
         }
 
+        apps = apps.stableUniqued(by: \MarketApp.id)
         apps.sort { relevance($0, query: name) < relevance($1, query: name) }
         return NameSearchResult(apps: apps, staleDate: stale ? cachedAt : nil)
     }
@@ -287,7 +292,7 @@ struct NativeSearchView: View {
             sort: "download_count",
             descending: true
         )) else { return }
-        recommendations = result.data.data.data
+        recommendations = result.data.data.data.stableUniqued(by: \MarketApp.id)
     }
 }
 

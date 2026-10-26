@@ -96,7 +96,7 @@ private struct DownloadLeaderboardView: View {
                 descending: true,
                 excludeHuawei: excludeHuawei
             ), force: force)
-            apps = result.data.data.data
+            apps = result.data.data.data.stableUniqued(by: \MarketApp.id)
             staleDate = result.isStale ? result.cachedAt : nil
         } catch {
             errorMessage = error.localizedDescription
@@ -205,7 +205,7 @@ struct DownloadGrowthView: View {
         do {
             let result = try await AppAPIService.downloadGrowth(days: period, force: force)
             guard requestID == id else { return }
-            apps = result.data.data
+            apps = result.data.data.stableUniqued(by: \DownloadGrowthApp.id)
             staleDate = result.isStale ? result.cachedAt : nil
             hasLoaded = true
         } catch {

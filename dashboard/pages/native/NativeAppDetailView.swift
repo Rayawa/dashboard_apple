@@ -164,29 +164,49 @@ struct NativeAppDetailView: View {
     @ViewBuilder
     private func ratingBreakdown(_ app: MarketApp) -> some View {
         let counts = [
-            (star: 5, count: app.star5RatingCount ?? 0),
-            (star: 4, count: app.star4RatingCount ?? 0),
-            (star: 3, count: app.star3RatingCount ?? 0),
-            (star: 2, count: app.star2RatingCount ?? 0),
-            (star: 1, count: app.star1RatingCount ?? 0),
+            (star: 5, count: max(0, app.star5RatingCount ?? 0)),
+            (star: 4, count: max(0, app.star4RatingCount ?? 0)),
+            (star: 3, count: max(0, app.star3RatingCount ?? 0)),
+            (star: 2, count: max(0, app.star2RatingCount ?? 0)),
+            (star: 1, count: max(0, app.star1RatingCount ?? 0)),
         ]
         if counts.contains(where: { $0.count > 0 }) {
+            let maximumCount = max(1, counts.map(\.count).max() ?? 1)
             DashboardCard {
-                DashboardSectionTitle(title: "评分分布", systemImage: "star.fill", tint: .orange)
-                Chart(counts, id: \.star) { item in
-                    BarMark(
-                        x: .value("评分数", item.count),
-                        y: .value("星级", "\(item.star) 星")
-                    )
-                    .foregroundStyle(.orange.gradient)
-                    .cornerRadius(4)
-                    .annotation(position: .trailing) {
-                        Text(DashboardFormat.count(item.count)).font(.caption2).foregroundStyle(.secondary)
+                HStack {
+                    DashboardSectionTitle(title: "逐星评分数量", systemImage: "star.fill", tint: .orange)
+                    Spacer()
+                    Text("共 \(DashboardFormat.count(max(0, app.totalStarRatingCount ?? 0))) 条")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                VStack(spacing: 3) {
+                    ForEach(counts, id: \.star) { item in
+                        Button {
+                            DashboardFeedback.selection()
+                        } label: {
+                            HStack(spacing: 10) {
+                                Text("\(item.star) 星")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 38, alignment: .leading)
+                                ProgressView(value: Double(item.count), total: Double(maximumCount))
+                                    .tint(.orange)
+                                Text(DashboardFormat.count(item.count))
+                                    .font(.caption.monospacedDigit())
+                                    .frame(width: 70, alignment: .trailing)
+                            }
+                            .contentShape(Rectangle())
+                            .padding(.vertical, 5)
+                        }
+                        .buttonStyle(RatingBreakdownRowButtonStyle())
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("\(item.star) 星评分 \(item.count) 条")
+                        .accessibilityAddTraits(.isButton)
                     }
                 }
-                .chartXAxis(.hidden)
-                .frame(height: 190)
-                .accessibilityLabel("应用评分分布")
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("逐星评分数量")
             }
         }
     }
@@ -211,24 +231,7 @@ struct NativeAppDetailView: View {
         DashboardCard {
             VStack(alignment: .leading, spacing: 12) {
                 DashboardSectionTitle(title: "应用截图", systemImage: "photo.on.rectangle.angled")
-                ScrollView(.horizontal) {
-                    LazyHStack(spacing: 14) {
-                        ForEach(app.screenshots) { screenshot in
-                            AsyncImage(url: screenshot.remoteURL) { phase in
-                                switch phase {
-                                case .success(let image): image.resizable().scaledToFit()
-                                case .failure: ContentUnavailableView("截图加载失败", systemImage: "photo.badge.exclamationmark")
-                                default: ProgressView()
-                                }
-                            }
-                            .frame(minWidth: 240, idealWidth: 360, maxWidth: 520, minHeight: 260, maxHeight: 440)
-                            .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 16))
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .accessibilityLabel("\(app.name)应用截图")
-                        }
-                    }
-                }
-                .scrollIndicators(.visible)
+                ScreenshotCarousel(appName: app.name, screenshots: app.screenshots)
             }
         }
     }
@@ -285,14 +288,14 @@ struct NativeAppDetailView: View {
             async let ratingsRequest = try? AppAPIService.ratingHistory(packageName: loadedApp.pkgName, force: force)
             if visibility.showAppDownloadMetrics, visibility.showDownloadHistory {
                 if let metricResult = try? await AppAPIService.appMetrics(packageName: loadedApp.pkgName, force: force) {
-                    metrics = metricResult.data.data
+                    metrics = metricResult.data.data.stableUniqued(by: \AppMetric.id)
                     if metricResult.isStale { staleDates.append(metricResult.cachedAt) }
                 } else {
                     failedSupplementalRequests += 1
                 }
             }
             if let ratingResult = await ratingsRequest {
-                ratings = ratingResult.data.data
+                ratings = ratingResult.data.data.stableUniqued(by: \AppRatingHistory.id)
                 if ratingResult.isStale { staleDates.append(ratingResult.cachedAt) }
             } else {
                 failedSupplementalRequests += 1
@@ -316,6 +319,211 @@ struct NativeAppDetailView: View {
     }
 }
 
+private struct RatingBreakdownRowButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.985 : 1)
+            .background(
+                configuration.isPressed ? Color.orange.opacity(0.08) : .clear,
+                in: RoundedRectangle(cornerRadius: 8)
+            )
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+private struct ScreenshotCarousel: View {
+    let appName: String
+    let screenshots: [ScreenshotInfo]
+
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var currentIndex = 0
+    @State private var settledScreenshotIDs: Set<String> = []
+    @State private var isDragging = false
+    @GestureState private var dragOffset: CGFloat = 0
+
+    private var isLandscape: Bool {
+        guard let first = screenshots.first else { return false }
+        let normalized = first.resolution
+            .replacingOccurrences(of: "×", with: "*")
+            .replacingOccurrences(of: "x", with: "*")
+            .replacingOccurrences(of: "X", with: "*")
+        let parts = normalized.split(separator: "*").compactMap { Double($0) }
+        guard parts.count >= 2 else { return false }
+        let width = first.rotated == 0 ? parts[0] : parts[1]
+        let height = first.rotated == 0 ? parts[1] : parts[0]
+        return width > height
+    }
+
+    private var carouselRatio: CGFloat {
+        if isLandscape { return 2 }
+        return horizontalSizeClass == .compact ? 0.62 : 1.1
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            GeometryReader { proxy in
+                ZStack {
+                    ForEach(Array(screenshots.enumerated()), id: \.offset) { index, screenshot in
+                        let position = relativePosition(of: index)
+                        if abs(position) <= 1 {
+                            screenshotCard(screenshot, index: index)
+                                .frame(width: cardWidth(in: proxy.size.width))
+                                .scaleEffect(cardScale(position: position, width: proxy.size.width))
+                                .opacity(cardOpacity(position: position, width: proxy.size.width))
+                                .offset(x: cardOffset(position: position, width: proxy.size.width))
+                                .zIndex(cardZIndex(position: position))
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .gesture(dragGesture(width: proxy.size.width))
+            }
+            .aspectRatio(carouselRatio, contentMode: .fit)
+            .frame(maxWidth: 760)
+            .clipped()
+
+            if screenshots.count > 1 {
+                HStack(spacing: 7) {
+                    ForEach(screenshots.indices, id: \.self) { index in
+                        Button {
+                            select(index)
+                        } label: {
+                            Capsule()
+                                .fill(index == currentIndex ? Color.accentColor : Color.secondary.opacity(0.28))
+                                .frame(width: index == currentIndex ? 22 : 7, height: 7)
+                                .animation(.easeOut(duration: 0.18), value: currentIndex)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("切换到第 \(index + 1) 张应用截图")
+                        .accessibilityAddTraits(index == currentIndex ? .isSelected : [])
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel("当前为第 \(currentIndex + 1) 张，共 \(screenshots.count) 张应用截图")
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .task(id: "\(currentIndex)-\(settledScreenshotIDs.count)-\(isDragging)") {
+            guard screenshots.count > 1,
+                  settledScreenshotIDs.count == screenshots.count,
+                  !isDragging else { return }
+            do {
+                try await Task.sleep(for: .seconds(2.5))
+                guard !Task.isCancelled else { return }
+                await MainActor.run { advance(by: 1, feedback: false) }
+            } catch {}
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("可自动播放和左右滑动的叠加应用截图")
+    }
+
+    private func screenshotCard(_ screenshot: ScreenshotInfo, index: Int) -> some View {
+        AsyncImage(url: screenshot.remoteURL) { phase in
+            switch phase {
+            case .success(let image):
+                image.resizable().scaledToFit()
+                    .onAppear { settledScreenshotIDs.insert(screenshotKey(screenshot, index: index)) }
+            case .failure:
+                ContentUnavailableView("截图加载失败", systemImage: "photo.badge.exclamationmark")
+                    .onAppear { settledScreenshotIDs.insert(screenshotKey(screenshot, index: index)) }
+            default:
+                ProgressView()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(.quaternary.opacity(0.25), in: RoundedRectangle(cornerRadius: 16))
+        .overlay { RoundedRectangle(cornerRadius: 16).stroke(.primary.opacity(0.1), lineWidth: 0.5) }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .accessibilityLabel("第 \(index + 1) 张 \(appName) 应用截图")
+    }
+
+    private func dragGesture(width: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { _ in
+                if !isDragging { isDragging = true }
+            }
+            .updating($dragOffset) { value, state, _ in
+                state = max(-width, min(width, value.translation.width))
+            }
+            .onEnded { value in
+                isDragging = false
+                let threshold = max(52, width * 0.18)
+                let projected = value.predictedEndTranslation.width
+                if value.translation.width < -threshold || projected < -threshold * 1.7 {
+                    advance(by: 1)
+                } else if value.translation.width > threshold || projected > threshold * 1.7 {
+                    advance(by: -1)
+                }
+            }
+    }
+
+    private func cardWidth(in width: CGFloat) -> CGFloat {
+        if isLandscape { return width * 0.88 }
+        return horizontalSizeClass == .compact ? width * 0.91 : width * 0.52
+    }
+
+    private func screenshotKey(_ screenshot: ScreenshotInfo, index: Int) -> String {
+        "\(screenshot.id)-\(index)"
+    }
+
+    private func relativePosition(of index: Int) -> Int {
+        guard screenshots.count > 1, index != currentIndex else { return 0 }
+        let forward = (index - currentIndex + screenshots.count) % screenshots.count
+        if forward == 1 { return 1 }
+        if forward == screenshots.count - 1 { return -1 }
+        return 2
+    }
+
+    private func cardOffset(position: Int, width: CGFloat) -> CGFloat {
+        if position == 0 { return dragOffset }
+        let resolvedPosition = screenshots.count == 2 && dragOffset > 0 ? -position : position
+        let sideOffset = width * (isLandscape ? 0.12 : 0.32)
+        let revealing = (dragOffset < 0 && resolvedPosition == 1) ||
+            (dragOffset > 0 && resolvedPosition == -1)
+        let progress = min(1, abs(dragOffset) / max(1, width))
+        return CGFloat(resolvedPosition) * sideOffset * (revealing ? 1 - progress : 1)
+    }
+
+    private func cardScale(position: Int, width: CGFloat) -> CGFloat {
+        guard position != 0 else { return 1 }
+        let resolvedPosition = screenshots.count == 2 && dragOffset > 0 ? -position : position
+        let revealing = (dragOffset < 0 && resolvedPosition == 1) ||
+            (dragOffset > 0 && resolvedPosition == -1)
+        let progress = min(1, abs(dragOffset) / max(1, width))
+        return revealing ? 0.9 + progress * 0.1 : 0.9
+    }
+
+    private func cardOpacity(position: Int, width: CGFloat) -> Double {
+        guard position != 0 else { return 1 }
+        let resolvedPosition = screenshots.count == 2 && dragOffset > 0 ? -position : position
+        let revealing = (dragOffset < 0 && resolvedPosition == 1) ||
+            (dragOffset > 0 && resolvedPosition == -1)
+        let progress = min(1, abs(dragOffset) / max(1, width))
+        return revealing ? 0.68 + Double(progress) * 0.32 : 0.68
+    }
+
+    private func cardZIndex(position: Int) -> Double {
+        position == 0 ? 3 : 1
+    }
+
+    private func advance(by amount: Int, feedback: Bool = true) {
+        guard screenshots.count > 1 else { return }
+        if feedback { DashboardFeedback.selection() }
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
+            currentIndex = (currentIndex + amount + screenshots.count) % screenshots.count
+        }
+    }
+
+    private func select(_ index: Int) {
+        guard index != currentIndex else { return }
+        DashboardFeedback.selection()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.88)) {
+            currentIndex = index
+        }
+    }
+}
+
 private struct TrendPoint: Identifiable {
     let date: Date
     let value: Double
@@ -328,15 +536,20 @@ private struct TrendChartCard: View {
     let tint: Color
     let points: [TrendPoint]
     @State private var selectedDate: Date?
-    @State private var visibleDays = 60.0
+    @State private var visibleDays: Double
     @State private var scrollDate: Date
+    @State private var magnificationStartDays: Double?
 
     init(title: String, tint: Color, points: [TrendPoint]) {
         self.title = title
         self.tint = tint
         self.points = points
+        let earliest = points.min(by: { $0.date < $1.date })?.date ?? Date()
         let latest = points.max(by: { $0.date < $1.date })?.date ?? Date()
-        _scrollDate = State(initialValue: latest.addingTimeInterval(-60 * 24 * 60 * 60))
+        let span = ChartInteractionSupport.daySpan(for: [earliest, latest])
+        _visibleDays = State(initialValue: span)
+        _scrollDate = State(initialValue: earliest)
+        _selectedDate = State(initialValue: latest)
     }
 
     var body: some View {
@@ -368,18 +581,43 @@ private struct TrendChartCard: View {
                 .chartScrollPosition(x: $scrollDate)
                 .chartYAxis { AxisMarks(position: .leading) }
                 .frame(minHeight: 280)
-                .accessibilityLabel(title)
-                HStack {
-                    Image(systemName: "minus.magnifyingglass")
-                    Slider(value: $visibleDays, in: 14...365, step: 7)
-                        .accessibilityLabel("图表显示时间范围")
-                    Image(systemName: "plus.magnifyingglass")
-                    Text("\(Int(visibleDays)) 天")
-                        .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                        .frame(width: 52, alignment: .trailing)
-                }
+                .simultaneousGesture(zoomGesture)
+                .accessibilityLabel("\(title)，点按查看数据，单指横移，双指缩放")
+                Text("点按查看数据；单指横移，双指缩放 · 当前显示约 \(Int(visibleDays)) 天")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+            .onChange(of: selectedDate) { oldValue, newValue in
+                guard let oldValue, let newValue,
+                      !Calendar.current.isDate(oldValue, inSameDayAs: newValue) else { return }
+                DashboardFeedback.selection()
             }
         }
+    }
+
+    private var fullSpanDays: Double {
+        guard let first = points.map(\.date).min(), let last = points.map(\.date).max() else { return 14 }
+        return ChartInteractionSupport.daySpan(for: [first, last])
+    }
+
+    private var zoomGesture: some Gesture {
+        MagnifyGesture()
+            .onChanged { value in
+                if magnificationStartDays == nil { magnificationStartDays = visibleDays }
+                let start = magnificationStartDays ?? visibleDays
+                if let next = ChartInteractionSupport.zoomedDaySpan(
+                    start: start,
+                    magnification: Double(value.magnification),
+                    fullSpan: fullSpanDays
+                ) {
+                    visibleDays = next
+                }
+            }
+            .onEnded { _ in
+                magnificationStartDays = nil
+                DashboardFeedback.selection()
+            }
     }
 
     private func selectedPoint(in points: [TrendPoint]) -> TrendPoint? {
