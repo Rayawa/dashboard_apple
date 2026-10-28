@@ -116,25 +116,25 @@ Main client endpoints:
 ```text
 dashboard/
 ├── common/
-│   ├── AppAPIService.swift     # API、校验、响应限制与缓存策略
-│   ├── MarketModels.swift      # 后端 Codable 数据契约
-│   ├── MarketCache.swift       # 磁盘缓存
-│   ├── DashboardInputParser.swift # 链接、分享文字和标识解析
-│   ├── DashboardDeepLink.swift # App URL 路由
-│   ├── Formatters.swift        # 数量、大小和日期格式化
-│   ├── UserRoutes.swift        # NavigationStack 路由
-│   └── constants.swift         # URL、元数据与环境配置
+│   ├── AppAPIService.swift     # API, validation, response limits, and caching policy
+│   ├── MarketModels.swift      # Backend Codable data contracts
+│   ├── MarketCache.swift       # Disk cache
+│   ├── DashboardInputParser.swift # Link, shared-text, and identifier parsing
+│   ├── DashboardDeepLink.swift # App URL routing
+│   ├── Formatters.swift        # Count, size, and date formatting
+│   ├── UserRoutes.swift        # NavigationStack routes
+│   └── constants.swift         # URLs, metadata, and environment configuration
 ├── component/
 │   ├── AdvancedSearchPanel.swift
 │   ├── DashboardUI.swift
-│   └── LegacyWebView.swift     # 受限的备用 WebView
+│   └── LegacyWebView.swift     # Restricted fallback WebView
 ├── pages/
-│   ├── Dashboard.swift         # NavigationSplitView 根入口
-│   ├── native/                 # 首页、概况、列表、搜索、投稿、详情、我的
-│   └── user/                   # 隐私政策、日志等辅助页面
+│   ├── Dashboard.swift         # NavigationSplitView root
+│   ├── native/                 # Home, overview, lists, search, submissions, details, Profile
+│   └── user/                   # Privacy policy, changelog, and supporting pages
 └── Assets.xcassets/
 
-scripts/ContractProbe/          # 使用真实响应验证 Codable 契约
+scripts/ContractProbe/          # Validate Codable contracts using real responses
 ```
 
 ## Security boundaries
